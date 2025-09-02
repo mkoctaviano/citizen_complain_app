@@ -1,6 +1,3 @@
-#!/usr/bin/env python
-# coding: utf-8
-
 import sys
 from pathlib import Path
 sys.path.append(str(Path(__file__).resolve().parent.parent))
@@ -8,7 +5,6 @@ sys.path.append(str(Path(__file__).resolve().parent.parent))
 import os
 import re
 import time
-
 import streamlit as st
 import utils.env  # ensures .env is loaded
 from utils.voice import record_voice, transcribe_google
@@ -26,9 +22,8 @@ hide_multipage_nav_css()
 
 # ---------------- 홈으로 버튼 (with reset) ----------------
 if st.button("🏠 홈으로"):
-    for key in ["chat_history", "answers", "step_idx", "submitted", "voice"]:
-        if key in st.session_state:
-            del st.session_state[key]
+    for key in list(st.session_state.keys()):
+        del st.session_state[key]
     st.switch_page("streamlit_app.py")
     st.stop()
 
@@ -77,7 +72,7 @@ CONTENT_STEP_IDX = next(i for i, s in enumerate(STEPS) if s["key"] == "content")
 if "chat_history" not in st.session_state:
     st.session_state.chat_history = []
 if "answers" not in st.session_state:
-    st.session_state.answers = {k["key"]: None for k in STEPS}
+    st.session_state.answers = {}
 if "step_idx" not in st.session_state:
     st.session_state.step_idx = 0
 if "submitted" not in st.session_state:
@@ -103,7 +98,6 @@ for m in st.session_state.chat_history:
 
 # ---------------- Voice Input (content step only) ----------------
 VOICE_ON = True
-
 if VOICE_ON and st.session_state.step_idx == CONTENT_STEP_IDX:
     with st.expander("🎤 음성으로 내용 입력 (선택)"):
         use_voice = st.checkbox("음성 입력 사용하기", value=False)
@@ -135,7 +129,7 @@ if VOICE_ON and st.session_state.step_idx == CONTENT_STEP_IDX:
                     if st.session_state.step_idx < len(STEPS):
                         bot_say(STEPS[st.session_state.step_idx]["prompt"])
                     else:
-                        pass  # let save block run below
+                        pass
                     st.rerun()
 
 # ---------------- Chat Input ----------------
@@ -155,21 +149,15 @@ if msg:
         if st.session_state.step_idx < len(STEPS):
             bot_say(STEPS[st.session_state.step_idx]["prompt"])
         else:
-            # -------- Final save and page switch --------
             try:
-                cap = st.session_state.get("voice", None)
-                기타 = {"voice": {"gs_uri": cap.gs_uri, "duration_sec": cap.duration_sec}} if cap else None
-
                 민원번호 = 민원_등록(
                     접수경로="웹",
-                    이름=st.session_state.answers["name"],
-                    연락처=st.session_state.answers["phone"],
-                    주소=st.session_state.answers["address"],
-                    내용=st.session_state.answers["content"],
+                    이름=st.session_state.answers.get("name"),
+                    연락처=st.session_state.answers.get("phone"),
+                    주소=st.session_state.answers.get("address"),
+                    내용=st.session_state.answers.get("content"),
                     첨부경로목록=[],
-                    # 기타=기타,
                 )
-
                 st.session_state["last_ticket_no"] = 민원번호
                 st.session_state["submitted"] = True
                 st.switch_page("pages/complaint_submitted.py")
