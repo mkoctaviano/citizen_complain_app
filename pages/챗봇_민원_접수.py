@@ -18,7 +18,7 @@ from storage import init_db, 민원_등록
 
 # ---------------- Page config ----------------
 st.set_page_config(
-    page_title="챗봇 민원 접수",
+    page_title="민원 접수",
     page_icon="🤖",
     layout="centered",
     initial_sidebar_state="collapsed",
