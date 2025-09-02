@@ -29,7 +29,11 @@ st.markdown("""
 hide_multipage_nav_css()
 
 # Top nav: back to Home
-st.page_link("streamlit_app.py", label="홈으로", icon="🏠")
+import streamlit as st
+
+# Only works inside multipage apps
+if st.button("🏠 홈으로"):
+    st.switch_page("streamlit_app.py")  # filename of the page script
 
 # ---------- officer guard ----------
 def _require_officer():
