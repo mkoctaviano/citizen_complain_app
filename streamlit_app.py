@@ -1,14 +1,19 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[ ]:
-
-
-# Home.py
-import os
+#  Fix path before any `utils` import
+import sys
 from pathlib import Path
+sys.path.append(str(Path(__file__).resolve().parent))
+
+# Now import everything else
+import os
 import streamlit as st
-from utils.ui import hide_multipage_nav_css
+from utils.ui import hide_multipage_nav_css  # ✅ after fixing sys.path
+
+# Add project root to sys.path
+sys.path.append(str(Path(__file__).resolve().parent))
+
 
 
 # ---- load env (for OFFICER_PASS) ----
