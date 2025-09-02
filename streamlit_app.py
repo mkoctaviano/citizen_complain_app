@@ -123,7 +123,7 @@ st.markdown(
 st.markdown('<div class="k-card">', unsafe_allow_html=True)
 st.markdown(
     '<div class="k-hero"><h1>원하시는 업무를 선택해주세요.</h1>'
-    '<p>민원인께서는 접수를 원하실 경우 ‘접수 화면으로 이동’ 버튼을 눌러주세요.</p></div>',
+    '<p>민원접수를 원하실 경우 ‘접수 화면으로 이동’ 버튼을 눌러주세요.</p></div>',
     unsafe_allow_html=True,
 )
 
