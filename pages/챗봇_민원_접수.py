@@ -103,18 +103,6 @@ for m in st.session_state.chat_history:
     with st.chat_message("assistant" if m["role"] == "assistant" else "user"):
         st.write(m["content"])
 
-# ---------------- Submitted state ----------------
-if st.session_state.submitted:
-    with st.chat_message("assistant"):
-        st.success(
-            "민원이 정상적으로 접수되었습니다.\n\n"
-            "소중한 의견을 남겨주셔서 감사합니다.\n"
-            "신속하고 성실하게 처리하겠습니다."
-        )
-    time.sleep(2)
-    st.session_state.clear()
-    st.rerun()
-
 
 # ---------------- Voice input (content step only) ----------------
 import os
@@ -190,8 +178,7 @@ if msg:
         else:
             # save and route as you already do
             try:
-                cap = st.session_state.get("voice", None)
-                기타 = {"voice": {"gs_uri": cap.gs_uri, "duration_sec": cap.duration_sec}} if cap else None
+                기타 = None  # or store transcript later if you want
 
                 민원번호 = 민원_등록(
                     접수경로="웹",
@@ -208,10 +195,7 @@ if msg:
                     st.session_state.pop(k, None)
 
                 st.switch_page("pages/complaint_submitted.py")
+                st.stop()
 
             except Exception as e:
                 bot_say(f"죄송합니다. 접수 중 오류가 발생했습니다: {e}")
-
-# Keep chat loop going safely
-if st.session_state.get("step_idx", 0) < len(STEPS):
-    st.rerun()
