@@ -122,8 +122,8 @@ st.markdown(
 
 st.markdown('<div class="k-card">', unsafe_allow_html=True)
 st.markdown(
-    '<div class="k-hero"><h1>원하시는 화면을 선택하세요</h1>'
-    '<p>민원인께서는 "접수 화면으로 이동"을 눌러주세요.</p></div>',
+    '<div class="k-hero"><h1>민원인께서는 "접수 화면으로 이동"을 눌러주세요</h1>'
+    '<p>감사합니다.</p></div>',
     unsafe_allow_html=True,
 )
 
