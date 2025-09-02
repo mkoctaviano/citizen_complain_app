@@ -382,50 +382,77 @@ with a1:
         st.info("긴급도 점수(urgency) 정보를 찾을 수 없습니다.")
 
 import altair as alt
-
-import altair as alt
 import pandas as pd
 
 with a2:
     st.subheader("부서별 민원 건수")
+
+    # 데이터 준비
     dept_counts = (
         df["부서"].fillna("미지정").replace("", "미지정").value_counts().reset_index()
     )
     dept_counts.columns = ["부서", "건수"]
 
     if not dept_counts.empty:
-        # ---- 막대 그래프 ----
+        total = float(dept_counts["건수"].sum())
+        # 비율은 0~1 사이로 (Altair에서 .1% 포맷 사용)
+        dept_counts["비율"] = dept_counts["건수"] / total
+
+        # ✅ 색상 도메인 & 팔레트 (두 차트가 동일하게 쓰도록)
+        color_domain = dept_counts["부서"].tolist()
+        color_scale = alt.Scale(domain=color_domain, scheme="category20")  # 새 부서도 자동 배정
+
+        # ✅ 막대 그래프 (가로) — 부서가 많으면 높이 자동 증가
+        bar_height = max(220, 28 * len(dept_counts))  # 항목당 28px, 최소 220px
         bar_chart = (
             alt.Chart(dept_counts)
-            .mark_bar(color="#1f77b4", cornerRadiusTopLeft=5, cornerRadiusTopRight=5)
+            .mark_bar(cornerRadiusTopRight=5, cornerRadiusBottomRight=5)
             .encode(
-                x=alt.X("부서:N", sort="-y", axis=alt.Axis(labelAngle=0, labelFontSize=12, title=None)),
-                y=alt.Y("건수:Q", axis=alt.Axis(title="민원 건수", labelFontSize=12)),
-                tooltip=["부서", "건수"]
+                x=alt.X("건수:Q", axis=alt.Axis(title="민원 건수", labelFontSize=12)),
+                y=alt.Y("부서:N", sort="-x",
+                        axis=alt.Axis(labelFontSize=12, title=None)),
+                color=alt.Color("부서:N", scale=color_scale, legend=None),  # 색상 일치
+                tooltip=[
+                    alt.Tooltip("부서:N", title="부서"),
+                    alt.Tooltip("건수:Q", title="건수"),
+                    alt.Tooltip("비율:Q", format=".1%", title="비율")
+                ],
             )
-            .properties(width=350, height=300, title="부서별 민원 건수")
+            .properties(width=420, height=bar_height, title="부서별 민원 건수")
         )
 
+        # 막대 끝에 건수 표시
         bar_text = bar_chart.mark_text(
-            align="center", baseline="bottom", dy=-2, fontSize=11
+            align="left", baseline="middle", dx=3, fontSize=11
         ).encode(text="건수:Q")
 
-        # ---- 원형 그래프 ----
+        # ✅ 도넛(원형) — 내부에 % 라벨
         pie_chart = (
             alt.Chart(dept_counts)
-            .mark_arc(innerRadius=50)  # 도넛 스타일
+            .mark_arc(innerRadius=60)
             .encode(
                 theta="건수:Q",
-                color=alt.Color("부서:N", legend=alt.Legend(title="부서")),
-                tooltip=["부서", "건수"]
+                color=alt.Color("부서:N", scale=color_scale, legend=alt.Legend(title="부서")),
+                tooltip=[
+                    alt.Tooltip("부서:N", title="부서"),
+                    alt.Tooltip("건수:Q", title="건수"),
+                    alt.Tooltip("비율:Q", format=".1%", title="비율")
+                ],
             )
-            .properties(width=300, height=300, title="부서별 민원 비율")
+            .properties(width=360, height=360, title="부서별 민원 비율")
         )
 
-        # 두 개 나란히 보여주기
-        st.altair_chart(bar_chart + bar_text | pie_chart, use_container_width=False)
+        pie_text = (
+            alt.Chart(dept_counts)
+            .mark_text(radius=95, size=12)
+            .encode(text=alt.Text("비율:Q", format=".1%"), color=alt.value("#333"))
+        )
+
+        # ✅ 가로 막대 + 도넛 나란히
+        st.altair_chart((bar_chart + bar_text) | (pie_chart + pie_text), use_container_width=False)
     else:
         st.info("부서 데이터가 없습니다.")
+
 
 
 
