@@ -134,21 +134,24 @@ if VOICE_ON and st.session_state.get("step_idx") == CONTENT_STEP_IDX:
                     st.rerun()
 
 
-# ---------------- Chat input ----------------
-msg = st.chat_input("메시지를 입력하세요…")
-
-# 안전 초기화(중복 방지)
+# ---------------- Session Initialization ----------------
 if "step_idx" not in st.session_state:
     st.session_state.step_idx = 0
 if "answers" not in st.session_state:
     st.session_state.answers = {}
+if "submitted" not in st.session_state:
+    st.session_state.submitted = False
 
-# 인덱스 범위 보호
+# Guard: prevent going past last step
 if st.session_state.step_idx >= len(STEPS):
     st.session_state.step_idx = len(STEPS) - 1
 
+# ---------------- Chat Input ----------------
+msg = st.chat_input("메시지를 입력하세요…")
+
 if msg:
     user_say(msg)
+
     step = STEPS[st.session_state.step_idx]
     ok, val, err = step["validator"](msg)
 
@@ -157,7 +160,7 @@ if msg:
     else:
         st.session_state.answers[step["key"]] = val
 
-        # (옵션) content 단계에서 후처리/모델 호출 가능
+        # Optional model call at content step
         if step["key"] == "content":
             try:
                 text = st.session_state.answers["content"]
@@ -168,10 +171,11 @@ if msg:
 
         st.session_state.step_idx += 1
 
+        # Next question or submission
         if st.session_state.step_idx < len(STEPS):
             bot_say(STEPS[st.session_state.step_idx]["prompt"])
         else:
-            # ----- 최종 저장 & 페이지 전환 -----
+            # -------- Final save and page switch --------
             try:
                 cap = st.session_state.get("voice", None)
                 기타 = {"voice": {"gs_uri": cap.gs_uri, "duration_sec": cap.duration_sec}} if cap else None
@@ -186,17 +190,16 @@ if msg:
                     기타=기타,
                 )
 
-                # 전환에 필요한 최소 정보만 남김
                 st.session_state["last_ticket_no"] = 민원번호
                 st.session_state["submitted"] = True
 
-                st.switch_page("pages/complaint_submitted.py")
-                st.stop()  # ✅ 전환 후 즉시 중단
+                st.switch_page("complaint_submitted.py")  # or "pages/complaint_submitted.py" depending on structure
+                st.stop()
 
             except Exception as e:
                 bot_say(f"죄송합니다. 접수 중 오류가 발생했습니다: {e}")
 
-# # ---------------- Rerun 제어 ----------------
-# # 전환/완료 상태가 아니고 다음 스텝이 남아 있을 때만 리런
-# if (not st.session_state.get("submitted", False)) and st.session_state.get("step_idx", 0) < len(STEPS):
-#     st.rerun()
+# ---------------- Optional Debug (comment out in prod) ----------------
+# st.write("현재 단계:", st.session_state.step_idx)
+# st.write("현재 저장된 답변:", st.session_state.answers)
+# st.write("전송된 메시지:", msg)
