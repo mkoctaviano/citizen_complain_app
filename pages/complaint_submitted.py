@@ -70,20 +70,16 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-# Auto-redirect back to Home after 3 seconds
-st.markdown(
-    """
-    <meta http-equiv="refresh" content="3; url=./../" />
-    <script>
-      // Fallback for some environments
-      setTimeout(function() {
-        try {
-          var base = window.location.pathname.split('/pages')[0] || '/';
-          window.location.href = window.location.origin + base + '/';
-        } catch (e) {}
-      }, 3000);
-    </script>
-    """,
-    unsafe_allow_html=True,
-)
+import time
+import streamlit as st
 
+# ... your message UI above ...
+
+# wait 3 seconds then go to Home
+time.sleep(3)
+try:
+    st.switch_page("home.py")            # <-- or "streamlit_app.py" if that's your entry
+except Exception:
+    # Fallback clickable link if switch_page is unavailable
+    st.page_link("home.py", label="🏠 홈으로 이동")
+    st.stop()
