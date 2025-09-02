@@ -18,8 +18,8 @@ from storage import init_db, 민원_등록
 
 # ---------------- Page config ----------------
 st.set_page_config(
-    page_title="챗봇 민원 접수",
-    page_icon="🤖",
+    page_title="민원 접수",
+    page_icon="",
     layout="centered",
     initial_sidebar_state="collapsed",
 )
@@ -32,7 +32,7 @@ import streamlit as st
 if st.button("🏠 홈으로"):
     st.switch_page("streamlit_app.py")  # filename of the page script
 
-st.title("🤖 챗봇 민원 접수")
+st.title("챗봇 민원 접수")
 st.caption("대화형으로 정보를 입력하시면 민원이 접수됩니다. 담당 부서가 확인 후 처리합니다.")
 
 # ---------------- Init ----------------
@@ -69,10 +69,10 @@ def validate_content(x: str):
 
 # -------- Conversation steps --------
 STEPS = [
-    {"key": "name", "prompt": "이름을 입력해 주세요.", "validator": validate_name},
-    {"key": "phone", "prompt": "연락처를 입력해 주세요. 예) 010-1234-5678", "validator": validate_phone},
-    {"key": "address", "prompt": "주소를 입력해 주세요. (없으면 '건너뛰기')", "validator": validate_address},
-    {"key": "content", "prompt": "민원 내용을 입력해 주세요.", "validator": validate_content},
+    {"key": "name", "prompt": "민원인 분의 성함을 알려 주실 수 있을까요?", "validator": validate_name},
+    {"key": "phone", "prompt": "연락 가능한 전화번호를 입력해 주시겠어요?. 예) 010-1234-5678", "validator": validate_phone},
+    {"key": "address", "prompt": "민원이 발생한 주소를 입력해주세요.(보다 정확한 안내를 위해 필요합니다.)", "validator": validate_address},
+    {"key": "content", "prompt": "어떤 민원을 접수하고 싶으신가요? 자세히 말씀해 주시면 빠르게 도와드릴 수 있어요!", "validator": validate_content},
 ]
 CONTENT_STEP_IDX = next(i for i, s in enumerate(STEPS) if s["key"] == "content")
 
