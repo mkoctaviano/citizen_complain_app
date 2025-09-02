@@ -384,79 +384,38 @@ with a1:
 import altair as alt
 import pandas as pd
 
-with a2:
-    st.subheader("부서별 민원 건수")
-
-    # 데이터 준비
-    dept_counts = (
-        df["부서"].fillna("미지정").replace("", "미지정").value_counts().reset_index()
+# ✅ 도넛(원형) — 각 부서 % 라벨을 조각 위에 표시
+pie_chart = (
+    alt.Chart(dept_counts)
+    .mark_arc(innerRadius=60)
+    .encode(
+        theta=alt.Theta("건수:Q", stack=True),
+        color=alt.Color("부서:N", scale=color_scale, legend=alt.Legend(title="부서")),
+        tooltip=[
+            alt.Tooltip("부서:N", title="부서"),
+            alt.Tooltip("건수:Q", title="건수"),
+            alt.Tooltip("비율:Q", format=".1%", title="비율"),
+        ],
     )
-    dept_counts.columns = ["부서", "건수"]
+    .properties(width=360, height=360, title="부서별 민원 비율")
+)
 
-    if not dept_counts.empty:
-        total = float(dept_counts["건수"].sum())
-        # 비율은 0~1 사이로 (Altair에서 .1% 포맷 사용)
-        dept_counts["비율"] = dept_counts["건수"] / total
+# ⬇️ 조각 중앙 부근(반경)으로 % 라벨을 배치
+pie_text = (
+    alt.Chart(dept_counts)
+    .mark_text(radius=120, size=12, fontWeight="bold")   # radius를 꼭 지정 (px). 110~130 권장
+    .encode(
+        theta=alt.Theta("건수:Q", stack=True),           # 조각의 중간 각도에 위치
+        text=alt.Text("비율:Q", format=".1%"),            # 0.1% 형식
+        detail="부서:N",                                  # 부서별로 개별 텍스트 생성(겹침 방지)
+        color=alt.value("#111")                           # 밝은 색 위에서도 보이는 진한 글씨
+    )
+    .transform_filter("datum.비율 >= 0.03")               # 3% 미만은 라벨 생략(겹침 방지)
+)
 
-        # ✅ 색상 도메인 & 팔레트 (두 차트가 동일하게 쓰도록)
-        color_domain = dept_counts["부서"].tolist()
-        color_scale = alt.Scale(domain=color_domain, scheme="category20")  # 새 부서도 자동 배정
+# 나란히 배치 (가로 막대 + 도넛)
+st.altair_chart((bar_chart + bar_text) | (pie_chart + pie_text), use_container_width=False)
 
-        # ✅ 막대 그래프 (가로) — 부서가 많으면 높이 자동 증가
-        bar_height = max(220, 28 * len(dept_counts))  # 항목당 28px, 최소 220px
-        bar_chart = (
-            alt.Chart(dept_counts)
-            .mark_bar(cornerRadiusTopRight=5, cornerRadiusBottomRight=5)
-            .encode(
-                x=alt.X("건수:Q", axis=alt.Axis(title="민원 건수", labelFontSize=12)),
-                y=alt.Y("부서:N", sort="-x",
-                        axis=alt.Axis(labelFontSize=12, title=None)),
-                color=alt.Color("부서:N", scale=color_scale, legend=None),  # 색상 일치
-                tooltip=[
-                    alt.Tooltip("부서:N", title="부서"),
-                    alt.Tooltip("건수:Q", title="건수"),
-                    alt.Tooltip("비율:Q", format=".1%", title="비율")
-                ],
-            )
-            .properties(width=420, height=bar_height, title="부서별 민원 건수")
-        )
-
-        # 막대 끝에 건수 표시
-        bar_text = bar_chart.mark_text(
-            align="left", baseline="middle", dx=3, fontSize=11
-        ).encode(text="건수:Q")
-        # ✅ 도넛(원형) — 내부에 % 라벨
-        # ✅ 도넛(원형) — 내부에 % 라벨
-        pie_chart = (
-            alt.Chart(dept_counts)
-            .mark_arc(innerRadius=60)
-            .encode(
-                theta=alt.Theta("건수:Q", stack=True),
-                color=alt.Color("부서:N", scale=color_scale, legend=alt.Legend(title="부서")),
-                tooltip=[
-                    alt.Tooltip("부서:N", title="부서"),
-                    alt.Tooltip("건수:Q", title="건수"),
-                    alt.Tooltip("비율:Q", format=".1%", title="비율")
-                ],
-            )
-            .properties(width=360, height=360, title="부서별 민원 비율")
-        )
-
-        # ✅ 각 부서 조각 중앙에 % 표시 (작은 조각은 생략)
-        pie_text = (
-            alt.Chart(dept_counts)
-            .mark_text(size=12, fontWeight="bold")
-            .encode(
-                theta=alt.Theta("건수:Q", stack=True),         # ← 반드시 지정
-                text=alt.Text("비율:Q", format=".1%"),          # 0.1% 형식
-                color=alt.value("#111")                         # 밝은 면에서도 보이게 진한 색
-            )
-            .transform_filter("datum.비율 >= 0.03")             # 3% 미만은 라벨 생략(겹침 방지)
-            .properties(width=360, height=360)
-        )
-
-        # 나란히 배치
-        st.altair_chart((bar_chart + bar_text) | (pie_chart + pie_text), use_container_width=False)
 
 
 
