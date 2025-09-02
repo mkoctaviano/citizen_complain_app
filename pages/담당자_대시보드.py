@@ -16,7 +16,7 @@ from st_aggrid import AgGrid, GridOptionsBuilder, GridUpdateMode, JsCode
 from utils.ui import hide_multipage_nav_css
 
 # ---------- page config FIRST ----------
-st.set_page_config(page_title="담당자 대시보드", page_icon="📊", layout="wide")
+st.set_page_config(page_title="담당자 대시보드", page_icon="", layout="wide")
 
 st.markdown("""
 <style>
@@ -192,7 +192,7 @@ def build_human_export_df(df: pd.DataFrame) -> pd.DataFrame:
     return out
 
 # ---------- header ----------
-st.title("📊 담당자 대시보드")
+st.title("담당자 대시보드")
 st.caption("아래 표에서 **행을 더블클릭**하면 상세 페이지로 이동합니다.")
 
 # ---------- DB init ----------
@@ -285,7 +285,7 @@ st.markdown("---")
 a1, a2 = st.columns([1, 1])
 
 with a1:
-    st.subheader("🔥 Top 5 긴급 민원")
+    st.subheader("우선민원 TOP5")
     tmp = df.copy()
     tmp["긴급도점수"] = tmp["기타"].apply(extract_urgency_score)
     top5 = (
@@ -353,21 +353,41 @@ with a1:
         st.info("긴급도 점수(urgency) 정보를 찾을 수 없습니다.")
 
 with a2:
-    st.subheader("🏢 부서별 민원 건수")
+    st.subheader("부서별 민원 건수")
     dept_counts = (
-        df["부서"].fillna("미지정").replace("", "미지정").value_counts().sort_values(ascending=False)
+        df["부서"].fillna("미지정").replace("", "미지정").value_counts().reset_index()
     )
+    dept_counts.columns = ["부서", "건수"]
+
     if not dept_counts.empty:
-        st.bar_chart(dept_counts)
+        import altair as alt
+
+        chart = (
+            alt.Chart(dept_counts)
+            .mark_bar(color="#4C72B0")
+            .encode(
+                x=alt.X("부서:N", sort="-y", axis=alt.Axis(labelAngle=0, labelFontSize=12)),
+                y=alt.Y("건수:Q"),
+                tooltip=["부서", "건수"]
+            )
+            .properties(width=600, height=400, title="부서별 민원 건수")
+        )
+
+        text = chart.mark_text(
+            align="center", baseline="bottom", dy=-2, fontSize=12
+        ).encode(text="건수:Q")
+
+        st.altair_chart(chart + text, use_container_width=True)
     else:
         st.info("부서 데이터가 없습니다.")
+
 
 # ---------- csv download (human-friendly) ----------
 st.markdown("---")
 export_df = build_human_export_df(df)
 csv_bytes = export_df.to_csv(index=False).encode("utf-8-sig")  # BOM for Excel compatibility
 st.download_button(
-    "📥 CSV 다운로드 (사람이 읽기 쉬운 형식)",
+    "CSV 다운로드",
     data=csv_bytes,
     file_name="complaints_readable.csv",
     mime="text/csv",
