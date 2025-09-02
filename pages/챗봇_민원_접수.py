@@ -161,28 +161,16 @@ if st.session_state.step_idx >= len(STEPS):
 msg = st.chat_input("메시지를 입력하세요…")
 
 if msg:
-    user_say(msg)
-
     step = STEPS[st.session_state.step_idx]
     ok, val, err = step["validator"](msg)
 
     if not ok:
         bot_say(err)
     else:
+        user_say(msg)  # Only say it after validation passes
         st.session_state.answers[step["key"]] = val
-
-        # Optional model call at content step
-        if step["key"] == "content":
-            try:
-                text = st.session_state.answers["content"]
-                # _pred = ComplaintRouter.predict(text)
-                # st.session_state["model_pred"] = _pred
-            except Exception:
-                pass
-
         st.session_state.step_idx += 1
 
-        # Next question or submission
         if st.session_state.step_idx < len(STEPS):
             bot_say(STEPS[st.session_state.step_idx]["prompt"])
         else:
@@ -204,11 +192,12 @@ if msg:
                 st.session_state["last_ticket_no"] = 민원번호
                 st.session_state["submitted"] = True
 
-                st.switch_page("pages/complaint_submitted.py")  # or "pages/complaint_submitted.py" depending on structure
+                st.switch_page("pages/complaint_submitted.py")
                 st.stop()
 
             except Exception as e:
                 bot_say(f"죄송합니다. 접수 중 오류가 발생했습니다: {e}")
+
 
 # ---------------- Optional Debug (comment out in prod) ----------------
 # st.write("현재 단계:", st.session_state.step_idx)
