@@ -31,7 +31,7 @@ def _require_officer():
         return
     st.warning("담당자 전용 화면입니다. 홈에서 비밀번호로 입장하세요.")
     try:
-        st.page_link("Home", label="← 홈으로")
+        st.page_link("streamlit_app.py", label="← 홈으로")
     except Exception:
         pass
     st.stop()
@@ -189,7 +189,7 @@ except RuntimeError as e:
     st.stop()
 
 # Back link to dashboard
-st.page_link("pages/담당자_대시보드", label="← 담당자 대시보드", icon="⬅️")
+st.page_link("pages/담당자_대시보드.py", label="← 담당자 대시보드", icon="⬅️")
 
 # Get complaint id (session or URL)
 qid = st.session_state.get("detail_id")
