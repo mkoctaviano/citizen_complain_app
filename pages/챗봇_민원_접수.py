@@ -111,7 +111,6 @@ for m in st.session_state.chat_history:
 
 # ---------------- Voice input (content step only) ----------------
 
-...
 if VOICE_ON and st.session_state.get("step_idx") == CONTENT_STEP_IDX:
     st.markdown("**음성으로 내용을 입력하실 수 있습니다.**")
 
