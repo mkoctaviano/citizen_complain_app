@@ -32,7 +32,7 @@ import streamlit as st
 if st.button("🏠 홈으로"):
     st.switch_page("streamlit_app.py")  # filename of the page script
 
-st.title("챗봇 민원 접수")
+st.title("민원 접수")
 st.caption("대화형으로 정보를 입력하시면 민원이 접수됩니다. 담당 부서가 확인 후 처리합니다.")
 
 # ---------------- Init ----------------
