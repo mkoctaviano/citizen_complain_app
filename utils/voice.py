@@ -1,23 +1,14 @@
 # utils/voice.py
-import io
-import json
+import io, json, base64
 from typing import Optional, Tuple
-
 import streamlit as st
 from pydub import AudioSegment
-
 from google.oauth2 import service_account
 from google.cloud import speech_v1p1beta1 as speech
 
 
-# -------------------------------------------------------------------
-# Recorder UI
-# -------------------------------------------------------------------
+# ---------------- Recorder ----------------
 def record_voice(just_once: bool = True) -> Optional[Tuple[bytes, int]]:
-    """
-    Simple recorder using streamlit-mic-recorder if available.
-    Returns (wav_bytes, sample_rate) or None.
-    """
     try:
         from streamlit_mic_recorder import mic_recorder
     except Exception:
@@ -28,62 +19,106 @@ def record_voice(just_once: bool = True) -> Optional[Tuple[bytes, int]]:
         start_prompt="녹음 시작",
         stop_prompt="녹음 중지",
         just_once=just_once,
-        format="webm",   # browser-friendly
+        format="webm",
         key="mic_recorder",
     )
     if not rec or not rec.get("bytes"):
         return None
 
     webm_bytes = rec["bytes"]
-
-    # Convert WEBM -> WAV (mono/16k) using pydub/ffmpeg
     audio = AudioSegment.from_file(io.BytesIO(webm_bytes), format="webm")
     audio = audio.set_frame_rate(16000).set_channels(1).set_sample_width(2)
     buf = io.BytesIO()
     audio.export(buf, format="wav")
-    wav_bytes = buf.getvalue()
-    return wav_bytes, 16000
+    return buf.getvalue(), 16000
 
 
-# -------------------------------------------------------------------
-# GCP Credentials loading (robust)
-# -------------------------------------------------------------------
+# ---------------- Secrets loading (robust) ----------------
+def _pem_fix_and_validate(pem: str) -> str:
+    """
+    Ensure correct newline handling and base64 body for a PEM private key.
+    Raises a clear error if invalid.
+    """
+    # Normalize line endings and escape sequences
+    pem = pem.replace("\r\n", "\n").replace("\r", "\n")
+    pem = pem.replace("\\n", "\n")  # if literal backslash-n remained
+    pem = pem.strip()
+
+    begin = "-----BEGIN PRIVATE KEY-----"
+    end   = "-----END PRIVATE KEY-----"
+
+    if begin not in pem or end not in pem:
+        raise RuntimeError("private_key must include BEGIN/END PRIVATE KEY lines.")
+
+    # Ensure exactly one newline after BEGIN and before END
+    # and ensure the text ends with a newline
+    if not pem.startswith(begin):
+        # sometimes there is BOM/whitespace; trim handled above, but check anyway
+        idx = pem.find(begin)
+        pem = pem[idx:]
+    if not pem.endswith("\n"):
+        pem = pem + "\n"
+
+    # Validate base64 body
+    lines = pem.split("\n")
+    try:
+        bidx = lines.index(begin)
+        eidx = lines.index(end)
+    except ValueError:
+        # in case END is last line with trailing '', adjust
+        bidx = 0
+        eidx = len(lines) - 1 if lines[-1] == end else lines.index(end)
+
+    body_lines = [ln for ln in lines[bidx + 1 : eidx] if ln.strip() != ""]
+    body = "".join(body_lines)
+
+    # padding fix (if needed)
+    pad = (-len(body)) % 4
+    if pad:
+        body += "=" * pad
+
+    try:
+        base64.b64decode(body, validate=True)
+    except Exception as e:
+        # show minimal, safe diagnostics
+        raise RuntimeError(f"private_key base64 invalid ({type(e).__name__}: {e})")
+
+    return "\n".join([begin] + [*body_lines] + [end, ""])
+
+
 def _normalize_sa(info: dict) -> dict:
-    """
-    Ensure private_key has real newlines so google oauth parser accepts it.
-    Handles cases where TOML kept '\\n' literally.
-    """
     pk = info.get("private_key", "")
-    # If it still contains literal backslash-n and no real newlines, convert:
-    if "\\n" in pk and "\n" not in pk:
-        pk = pk.replace("\\n", "\n")
-    info["private_key"] = pk
+    info["private_key"] = _pem_fix_and_validate(pk)
     return info
 
 
 def _load_gcp_creds_from_secrets() -> dict:
     """
-    Returns a service-account dict from st.secrets.
-
-    1) If 'GCP_SERVICE_ACCOUNT' exists (string or dict), use and parse it.
-    2) Else, try to reconstruct from flattened keys (type, project_id, private_key, etc.)
-       This supports the case where a repo .streamlit/secrets.toml defined raw fields.
-
-    Raises RuntimeError with a clear message if neither path works.
+    Load service account from secrets in any of these forms:
+      1) GCP_SERVICE_ACCOUNT (JSON string or dict)
+      2) [gcp_sa] TOML section (preferred for Cloud; preserves newlines)
+      3) flattened keys at root (type, project_id, private_key, ...)
     """
-    # Path 1: Single JSON blob under GCP_SERVICE_ACCOUNT
+    # 1) Single JSON blob
     if "GCP_SERVICE_ACCOUNT" in st.secrets:
-        info = st.secrets["GCP_SERVICE_ACCOUNT"]
-        if isinstance(info, str):
+        val = st.secrets["GCP_SERVICE_ACCOUNT"]
+        if isinstance(val, str):
             try:
-                info = json.loads(info)
+                info = json.loads(val)
             except Exception as e:
-                raise RuntimeError(f"GCP_SERVICE_ACCOUNT exists but could not be parsed as JSON: {e}")
-        elif not isinstance(info, dict):
-            raise RuntimeError("GCP_SERVICE_ACCOUNT exists but is neither a JSON string nor a dict.")
+                raise RuntimeError(f"GCP_SERVICE_ACCOUNT JSON parse error: {e}")
+        elif isinstance(val, dict):
+            info = dict(val)
+        else:
+            raise RuntimeError("GCP_SERVICE_ACCOUNT must be JSON string or dict.")
         return _normalize_sa(info)
 
-    # Path 2: flattened keys (repo secrets.toml scenario)
+    # 2) TOML section: [gcp_sa]
+    if "gcp_sa" in st.secrets:
+        info = dict(st.secrets["gcp_sa"])
+        return _normalize_sa(info)
+
+    # 3) Flattened keys
     needed = [
         "type", "project_id", "private_key", "client_email", "client_id",
         "auth_uri", "token_uri", "auth_provider_x509_cert_url", "client_x509_cert_url"
@@ -91,13 +126,11 @@ def _load_gcp_creds_from_secrets() -> dict:
     missing = [k for k in needed if k not in st.secrets]
     if missing:
         raise RuntimeError(
-            "st.secrets has no key 'GCP_SERVICE_ACCOUNT' and flattened keys are incomplete. "
-            f"Missing: {missing}. Prefer defining a single GCP_SERVICE_ACCOUNT = \"\"\"{{...}}\"\"\" in secrets."
+            "서비스 계정 시크릿을 찾지 못했습니다. "
+            "GCP_SERVICE_ACCOUNT (JSON 문자열) 또는 [gcp_sa] 섹션을 사용하세요. "
+            f"부족한 키: {missing}"
         )
-
-    # Some setups accidentally used 'project_key_id' instead of 'private_key_id' — tolerate both.
     private_key_id = st.secrets.get("private_key_id") or st.secrets.get("project_key_id")
-
     info = {
         "type": st.secrets["type"],
         "project_id": st.secrets["project_id"],
@@ -115,29 +148,15 @@ def _load_gcp_creds_from_secrets() -> dict:
 
 
 def _make_speech_client() -> speech.SpeechClient:
-    """
-    Build a SpeechClient from secrets with strong validation errors.
-    """
     try:
         info = _load_gcp_creds_from_secrets()
-
-        # Debug checks (uncomment temporarily if you need to inspect)
-        # pk = info.get("private_key", "")
-        # st.write("PK starts with:", repr(pk[:30]))
-        # st.write("PK ends with:", repr(pk[-30:]))
-        # assert pk.startswith("-----BEGIN PRIVATE KEY-----"), "private_key BEGIN line missing/invalid"
-        # assert pk.rstrip().endswith("-----END PRIVATE KEY-----"), "private_key END line missing/invalid"
-
         creds = service_account.Credentials.from_service_account_info(info)
         return speech.SpeechClient(credentials=creds)
     except Exception as e:
-        # Keep the message explicit so UI shows a clear reason
         raise RuntimeError(f"GCP 자격 증명 로드 실패: {e}")
 
 
-# -------------------------------------------------------------------
-# Google STT
-# -------------------------------------------------------------------
+# ---------------- Google STT ----------------
 def transcribe_google(
     wav_bytes: bytes,
     sample_rate: int,
@@ -145,26 +164,21 @@ def transcribe_google(
     phrase_hints=None,
     timeout_sec: int = 60,
 ) -> str:
-    """
-    Send PCM16 mono WAV bytes to Google STT with a finite timeout.
-    Returns transcript string ('' if nothing).
-    """
     client = _make_speech_client()
 
     config = speech.RecognitionConfig(
         language_code=language_code,
         encoding=speech.RecognitionConfig.AudioEncoding.LINEAR16,
         sample_rate_hertz=sample_rate,
-        model="latest_long",  # or "default"
+        model="latest_long",
         enable_automatic_punctuation=True,
         speech_contexts=[speech.SpeechContext(phrases=phrase_hints or [])],
     )
     audio = speech.RecognitionAudio(content=wav_bytes)
-
     resp = client.recognize(config=config, audio=audio, timeout=timeout_sec)
 
     pieces = []
     for r in resp.results:
         if r.alternatives:
             pieces.append(r.alternatives[0].transcript.strip())
-    return " ".join([p for p in pieces if p]).strip()
+    return " ".join(pieces).strip()
