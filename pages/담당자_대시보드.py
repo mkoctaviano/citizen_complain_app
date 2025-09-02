@@ -354,6 +354,9 @@ with a1:
 
 import altair as alt
 
+import altair as alt
+import pandas as pd
+
 with a2:
     st.subheader("부서별 민원 건수")
     dept_counts = (
@@ -362,7 +365,8 @@ with a2:
     dept_counts.columns = ["부서", "건수"]
 
     if not dept_counts.empty:
-        chart = (
+        # ---- 막대 그래프 ----
+        bar_chart = (
             alt.Chart(dept_counts)
             .mark_bar(color="#1f77b4", cornerRadiusTopLeft=5, cornerRadiusTopRight=5)
             .encode(
@@ -370,16 +374,30 @@ with a2:
                 y=alt.Y("건수:Q", axis=alt.Axis(title="민원 건수", labelFontSize=12)),
                 tooltip=["부서", "건수"]
             )
-            .properties(width=400, height=300, title="부서별 민원 건수")
+            .properties(width=350, height=300, title="부서별 민원 건수 (Bar)")
         )
 
-        text = chart.mark_text(
-            align="center", baseline="bottom", dy=-2, fontSize=12, color="black"
+        bar_text = bar_chart.mark_text(
+            align="center", baseline="bottom", dy=-2, fontSize=11
         ).encode(text="건수:Q")
 
-        st.altair_chart(chart + text, use_container_width=False)
+        # ---- 원형 그래프 ----
+        pie_chart = (
+            alt.Chart(dept_counts)
+            .mark_arc(innerRadius=50)  # 도넛 스타일
+            .encode(
+                theta="건수:Q",
+                color=alt.Color("부서:N", legend=alt.Legend(title="부서")),
+                tooltip=["부서", "건수"]
+            )
+            .properties(width=300, height=300, title="부서별 민원 비율 (Pie)")
+        )
+
+        # 두 개 나란히 보여주기
+        st.altair_chart(bar_chart + bar_text | pie_chart, use_container_width=False)
     else:
         st.info("부서 데이터가 없습니다.")
+
 
 
 
