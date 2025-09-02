@@ -29,7 +29,7 @@ hide_multipage_nav_css()
 st.markdown("""
     <style>
     .info-line {
-        font-size: 20px !important;
+        font-size: 30px !important;
         font-weight: bold;
         text-align: center;
         margin-bottom: 15px;
