@@ -1,12 +1,11 @@
-﻿streamlit==1.30.0
+streamlit==1.36.0
 python-dotenv==1.0.1
-streamlit-mic-recorder==0.0.8
 google-cloud-speech==2.27.0
 google-cloud-storage==2.17.0
 google-auth==2.33.0
-psycopg[binary]==3.2.9
 SQLAlchemy==2.0.32
+psycopg[binary]==3.2.9
 streamlit-aggrid==0.3.4.post3
 pydub>=0.25.1
-
-
+# optional stability
+protobuf~=4.25.3
