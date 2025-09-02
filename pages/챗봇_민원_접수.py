@@ -176,57 +176,35 @@ if msg:
         if st.session_state.step_idx < len(STEPS):
             bot_say(STEPS[st.session_state.step_idx]["prompt"])
         else:
-            # save and route as you already do
+            # ----- Submit: save to DB and navigate -----
             try:
-                # save and route as you already do
-try:
-    # If you don't store voice metadata yet, skip it
-    # cap = st.session_state.get("voice", None)
-    # 기타 = {"voice": {"gs_uri": cap.gs_uri, "duration_sec": cap.duration_sec}} if cap else None
-
-    민원번호 = 민원_등록(
-        접수경로="웹",
-        연락처=st.session_state.answers["phone"],
-        내용=st.session_state.answers["content"],
-        첨부경로목록=[],  # keep if your storage function expects this
-        이름=st.session_state.answers["name"],
-        주소=st.session_state.answers["address"],
-        # 기타=기타,  # <-- REMOVE or rename to match storage.py
-    )
-
-    # (optional) pass result to the next page
-    st.session_state["complaint_payload"] = {
-        "id": 민원번호,
-        "text": st.session_state.answers["content"],
-        "name": st.session_state.answers["name"],
-        "phone": st.session_state.answers["phone"],
-        "address": st.session_state.answers["address"],
-    }
-
-    st.switch_page("pages/complaint_submitted.py")
-    st.stop()
-
-except TypeError as e:
-    st.error(f"저장 함수 인자 오류: {e}")
-except Exception as e:
-    st.error(f"접수 중 오류: {e}")
-
                 민원번호 = 민원_등록(
                     접수경로="웹",
                     연락처=st.session_state.answers["phone"],
                     내용=st.session_state.answers["content"],
-                    첨부경로목록=[],
+                    첨부경로목록=[],            # keep if your storage expects it
                     이름=st.session_state.answers["name"],
                     주소=st.session_state.answers["address"],
-                    기타=기타,
                 )
 
-                #  Clear everything after submission
-                for k in ("answers", "chat_history", "step_idx", "submitted", "voice"):
+            # Pass payload to the next page (optional)
+               st.session_state["complaint_payload"] = {
+                    "id": 민원번호,
+                    "text": st.session_state.answers["content"],
+                    "name": st.session_state.answers["name"],
+                    "phone": st.session_state.answers["phone"],
+                    "address": st.session_state.answers["address"],
+                }
+
+                # Clear transient UI state
+                for k in ("answers", "chat_history", "step_idx", "voice"):
                     st.session_state.pop(k, None)
 
+                # Go to "접수 완료" page
                 st.switch_page("pages/complaint_submitted.py")
                 st.stop()
 
-            except Exception as e:
-                bot_say(f"죄송합니다. 접수 중 오류가 발생했습니다: {e}")
+             except TypeError as e:
+               st.error(f"저장 함수 인자 오류: {e}")
+             except Exception as e:
+               st.error(f"접수 중 오류: {e}")
