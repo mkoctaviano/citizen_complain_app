@@ -193,7 +193,7 @@ if msg:
                 st.session_state["last_ticket_no"] = 민원번호
                 st.session_state["submitted"] = True
 
-                st.switch_page("complaint_submitted.py")  # or "pages/complaint_submitted.py" depending on structure
+                st.switch_page("pages/complaint_submitted.py")  # or "pages/complaint_submitted.py" depending on structure
                 st.stop()
 
             except Exception as e:
