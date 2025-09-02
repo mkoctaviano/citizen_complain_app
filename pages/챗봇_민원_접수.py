@@ -102,14 +102,25 @@ for m in st.session_state.chat_history:
         st.write(m["content"])
 
 # ---------------- Voice input (content step only) ----------------
-VOICE_ON = False
+from utils.voice import record_voice
+from utils.speech_to_text import transcribe_google
+
+VOICE_ON = True  # ✅ Turn this on to activate the voice block
+CONTENT_STEP_IDX = 3  # ✅ Or whatever index corresponds to 'content' in your STEPS list
 
 if VOICE_ON and st.session_state.get("step_idx") == CONTENT_STEP_IDX:
     with st.expander("🎤 음성으로 내용 입력 (선택)"):
         use_voice = st.checkbox("음성 입력 사용하기", value=False)
+
         if use_voice:
             st.markdown("**녹음 버튼을 누른 뒤 말씀해 주세요.**")
-            rec = record_voice(just_once=True)
+
+            try:
+                rec = record_voice(just_once=True)
+            except Exception as e:
+                st.error(f"🎤 마이크 오류: {e}")
+                rec = None
+
             if rec is not None:
                 wav_bytes, sr = rec
                 st.audio(wav_bytes, format="audio/wav")
@@ -124,14 +135,16 @@ if VOICE_ON and st.session_state.get("step_idx") == CONTENT_STEP_IDX:
                 if transcript:
                     user_say(transcript)
                     st.session_state.answers["content"] = transcript
-                    # 다음 스텝으로 진행
                     st.session_state.step_idx += 1
+
                     if st.session_state.step_idx < len(STEPS):
                         bot_say(STEPS[st.session_state.step_idx]["prompt"])
                     else:
-                        # 최종 저장 로직은 아래 공통 블록에서 수행됨(텍스트 입력과 동일)
+                        # 최종 저장 로직은 아래 공통 블록에서 처리됨
                         pass
+
                     st.rerun()
+
 
 
 # ---------------- Session Initialization ----------------
