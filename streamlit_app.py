@@ -156,4 +156,7 @@ with c2:
 st.markdown('</div>', unsafe_allow_html=True)
 st.caption("민심청")
 
-st.write("Keys in secrets:", list(st.secrets.keys()))
+import streamlit as st
+
+st.write("All keys:", list(st.secrets.keys()))
+st.write("GCP_SERVICE_ACCOUNT exists:", "GCP_SERVICE_ACCOUNT" in st.secrets)
