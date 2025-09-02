@@ -426,11 +426,12 @@ with a2:
             align="left", baseline="middle", dx=3, fontSize=11
         ).encode(text="건수:Q")
         # ✅ 도넛(원형) — 내부에 % 라벨
+        # ✅ 도넛(원형) — 내부에 % 라벨
         pie_chart = (
             alt.Chart(dept_counts)
             .mark_arc(innerRadius=60)
             .encode(
-                theta="건수:Q",
+                theta=alt.Theta("건수:Q", stack=True),
                 color=alt.Color("부서:N", scale=color_scale, legend=alt.Legend(title="부서")),
                 tooltip=[
                     alt.Tooltip("부서:N", title="부서"),
@@ -441,18 +442,22 @@ with a2:
             .properties(width=360, height=360, title="부서별 민원 비율")
         )
 
-        # ✅ 각 부서 조각 위에 % 라벨 표시
+        # ✅ 각 부서 조각 중앙에 % 표시 (작은 조각은 생략)
         pie_text = (
             alt.Chart(dept_counts)
-            .mark_text(size=12, fontWeight="bold", color="white")  # 흰색 글씨
+            .mark_text(size=12, fontWeight="bold")
             .encode(
-                theta="건수:Q",
-                text=alt.Text("비율:Q", format=".1%"),
+                theta=alt.Theta("건수:Q", stack=True),         # ← 반드시 지정
+                text=alt.Text("비율:Q", format=".1%"),          # 0.1% 형식
+                color=alt.value("#111")                         # 밝은 면에서도 보이게 진한 색
             )
+            .transform_filter("datum.비율 >= 0.03")             # 3% 미만은 라벨 생략(겹침 방지)
+            .properties(width=360, height=360)
         )
 
-        # 나란히 출력
+        # 나란히 배치
         st.altair_chart((bar_chart + bar_text) | (pie_chart + pie_text), use_container_width=False)
+
 
 
     else:
