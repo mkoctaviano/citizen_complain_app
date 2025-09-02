@@ -14,7 +14,7 @@ import pandas as pd
 import streamlit as st
 from storage import init_db, 대시보드_조회
 
-# OPTIONAL: hide Streamlit's nav so this feels like an independent page
+#  hide Streamlit's nav so this feels like an independent page
 try:
     from utils.ui import hide_multipage_nav_css  # your CSS helper
 except Exception:
@@ -193,7 +193,7 @@ import streamlit as st
 
 # Only works inside multipage apps
 if st.button("⬅️ 담당자 대시보드"):
-    st.switch_page("담당자_대시보드")  # filename of the page script
+    st.switch_page("pages/담당자_대시보드.py")  # filename of the page script
     
 
 # Get complaint id (session or URL)
