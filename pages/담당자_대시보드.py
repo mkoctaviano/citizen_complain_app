@@ -29,7 +29,7 @@ st.markdown("""
 hide_multipage_nav_css()
 
 # Top nav: back to Home
-st.page_link("Home.py", label="홈으로", icon="🏠")
+st.page_link("Home", label="홈으로", icon="🏠")
 
 # ---------- officer guard ----------
 def _require_officer():
