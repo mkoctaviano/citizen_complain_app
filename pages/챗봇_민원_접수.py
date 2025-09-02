@@ -178,33 +178,34 @@ if msg:
         else:
             # ----- Submit: save to DB and navigate -----
             try:
-                민원번호 = 민원_등록(
-                    접수경로="웹",
-                    연락처=st.session_state.answers["phone"],
-                    내용=st.session_state.answers["content"],
-                    첨부경로목록=[],            # keep if your storage expects it
-                    이름=st.session_state.answers["name"],
-                    주소=st.session_state.answers["address"],
-                )
+               민원번호 = 민원_등록(
+                   접수경로="웹",
+                   연락처=st.session_state.answers["phone"],
+                   내용=st.session_state.answers["content"],
+                   첨부경로목록=[],  # keep if your storage expects it
+                   이름=st.session_state.answers["name"],
+                   주소=st.session_state.answers["address"],
+              )
 
-            # Pass payload to the next page (optional)
-               st.session_state["complaint_payload"] = {
-                    "id": 민원번호,
-                    "text": st.session_state.answers["content"],
-                    "name": st.session_state.answers["name"],
-                    "phone": st.session_state.answers["phone"],
-                    "address": st.session_state.answers["address"],
-                }  
+              # Pass payload to the next page (optional)
+              st.session_state["complaint_payload"] = {
+                  "id": 민원번호,
+                  "text": st.session_state.answers["content"],
+                  "name": st.session_state.answers["name"],
+                  "phone": st.session_state.answers["phone"],
+                  "address": st.session_state.answers["address"],
+             } 
 
-                # Clear transient UI state
-                for k in ("answers", "chat_history", "step_idx", "voice"):
-                    st.session_state.pop(k, None)
+             # Clear transient UI state
+             for k in ("answers", "chat_history", "step_idx", "voice"):
+                 st.session_state.pop(k, None)
 
-                # Go to "접수 완료" page
-                st.switch_page("pages/complaint_submitted.py")
-                st.stop()
+             # Go to "접수 완료" page
+             st.switch_page("pages/complaint_submitted.py")
+             st.stop()
 
-             except TypeError as e:
-               st.error(f"저장 함수 인자 오류: {e}")
-             except Exception as e:
-               st.error(f"접수 중 오류: {e}")
+         except TypeError as e:
+             st.error(f"저장 함수 인자 오류: {e}")
+         except Exception as e:
+             st.error(f"접수 중 오류: {e}")
+
