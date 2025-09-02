@@ -189,7 +189,12 @@ except RuntimeError as e:
     st.stop()
 
 # Back link to dashboard
-st.page_link("pages/담당자_대시보드.py", label="← 담당자 대시보드", icon="⬅️")
+import streamlit as st
+
+# Only works inside multipage apps
+if st.button("⬅️ 담당자 대시보드"):
+    st.switch_page("담당자_대시보드.py")  # filename of the page script
+    
 
 # Get complaint id (session or URL)
 qid = st.session_state.get("detail_id")
