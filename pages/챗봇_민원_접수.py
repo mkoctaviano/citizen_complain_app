@@ -26,7 +26,7 @@ st.set_page_config(
 hide_multipage_nav_css()
 
 # (optional) back to Home
-st.page_link("streamlit_app", label="🏠 홈으로")
+st.page_link("streamlit_app.py", label="🏠 홈으로")
 
 st.title("🤖 챗봇 민원 접수")
 st.caption("대화형으로 정보를 입력하시면 민원이 접수됩니다. 담당 부서가 확인 후 처리합니다.")
