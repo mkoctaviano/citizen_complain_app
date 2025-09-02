@@ -20,9 +20,38 @@ st.set_page_config(page_title="담당자 대시보드", page_icon="", layout="wi
 
 st.markdown("""
 <style>
+/* 마우스 포인터 */
 .ag-theme-balham .ag-row { cursor: pointer; }
+
+/* ✅ 컬럼 헤더: 글자 크게 + 굵게 + 가운데 정렬 */
+.ag-theme-balham .ag-header-cell-label {
+    font-size: 16px !important;
+    font-weight: 700 !important;
+    justify-content: center !important;   /* 헤더 텍스트 중앙 */
+}
+
+/* ✅ 본문 셀: 헤더보다 살짝 작게 */
+.ag-theme-balham .ag-cell {
+    font-size: 14px !important;
+    line-height: 1.35 !important;
+    padding-top: 6px !important;
+    padding-bottom: 6px !important;
+}
+
+/* ✅ 행 hover 시 약한 배경 */
+.ag-theme-balham .ag-row-hover {
+    background-color: #f7f9fc !important;
+}
+
+/* ✅ 짙은 구분선 */
+.ag-theme-balham .ag-root-wrapper, 
+.ag-theme-balham .ag-header, 
+.ag-theme-balham .ag-row {
+    border-color: #e5e7eb !important;
+}
 </style>
 """, unsafe_allow_html=True)
+
 
 
 # Hide the default multipage sidebar navigation
@@ -257,7 +286,7 @@ grid_options = gb.build()
 grid_resp = AgGrid(
     main_df,
     gridOptions=grid_options,
-    height=380,
+    height=500,
     theme="balham",
     allow_unsafe_jscode=True,
     update_mode=GridUpdateMode.SELECTION_CHANGED,
@@ -325,7 +354,7 @@ with a1:
         grid_top = AgGrid(
             top5,
             gridOptions=gb2.build(),
-            height=230,
+            height=260,
             theme="balham",
             allow_unsafe_jscode=True,
             update_mode=GridUpdateMode.SELECTION_CHANGED,
