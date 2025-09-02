@@ -420,29 +420,36 @@ retr_E, retr_meta = load_retriever_index(RETR_DIR) if RETR_DIR.exists() else (No
 tok_urg, mdl_urg, tok_emo, mdl_emo = load_priority_models(URGENCY_DIR, EMOTION_DIR) if (URGENCY_DIR.exists() and EMOTION_DIR.exists()) else (None, None, None, None)
 
 # -------------------------
-# Voice input (optional)
-# -------------------------
-# -------------------------
-# Voice input (optional)
+# Voice input (compatible with older Streamlit)
 # -------------------------
 st.divider()
 st.subheader("🎙️ 음성 입력 (선택)")
 
-STT_PHRASE_HINTS = ["지방세","주민등록","민원","불법주정차","단수","정전","누수"]
-MAX_MS = 120_000  # 2 minutes safety limit
+from streamlit_mic_recorder import mic_recorder
 
-# Use built-in mic if available; otherwise fall back to uploader
-audio_rec = getattr(st, "audio_input", None)
-voice_file = audio_rec("Record (ko-KR)") if audio_rec else st.file_uploader(
-    "오디오 업로드 (webm/mp3/m4a/wav/flac/ogg)",
-    type=["webm","mp3","m4a","wav","flac","ogg"],
-    key="voice_uploader",
+STT_PHRASE_HINTS = ["지방세","주민등록","민원","불법주정차","단수","정전","누수"]
+MAX_MS = 120_000  # 2 minutes safety cap
+
+# The component returns a dict with WAV/WEBM bytes in ["bytes"]
+# using just_once=True prevents reprocessing on every rerun
+rec = mic_recorder(
+    start_prompt="⏺️ 녹음 시작",
+    stop_prompt="⏹️ 녹음 종료",
+    format="webm",          # or "wav"; webm is smaller/faster
+    just_once=True,
+    use_container_width=True,
+    key="mic"
 )
 
-if voice_file is not None:
-    audio_bytes = voice_file.getvalue()
-    st.audio(audio_bytes)
+voice_bytes = rec["bytes"] if rec else None
 
+# Fallback: allow manual upload too
+up = st.file_uploader("또는 오디오 업로드 (webm/mp3/m4a/wav/flac/ogg)", type=["webm","mp3","m4a","wav","flac","ogg"])
+if up and not voice_bytes:
+    voice_bytes = up.getvalue()
+
+if voice_bytes:
+    st.audio(voice_bytes)
     c1, c2 = st.columns(2)
     do_fill = c1.button("📝 음성 → 텍스트 (입력란에 채우기)", use_container_width=True)
     do_run  = c2.button("⚡ 즉시 분석", use_container_width=True)
@@ -451,9 +458,8 @@ if voice_file is not None:
         try:
             from pydub import AudioSegment
             import io
-
-            # Quick duration check to avoid endless STT jobs
-            _a = AudioSegment.from_file(io.BytesIO(audio_bytes))
+            # quick length guard to avoid long-running jobs
+            _a = AudioSegment.from_file(io.BytesIO(voice_bytes))
             dur_ms = len(_a)
             st.info(f"Audio length: {dur_ms/1000:.1f}s")
             if dur_ms > MAX_MS:
@@ -462,10 +468,10 @@ if voice_file is not None:
                 from citizen_complain_app.stt_google import transcribe_bytes
                 with st.spinner("음성 인식 중…"):
                     transcript = transcribe_bytes(
-                        audio_bytes,
+                        voice_bytes,
                         language_code="ko-KR",
                         phrase_hints=STT_PHRASE_HINTS,
-                        timeout_sec=300,   # hard timeout
+                        timeout_sec=300,
                     )
                 if not transcript:
                     st.warning("음성을 인식하지 못했습니다.")
@@ -477,6 +483,7 @@ if voice_file is not None:
                         st.rerun()
         except Exception as e:
             st.error(f"STT 오류: {e}")
+
 
 
 # Input
