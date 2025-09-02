@@ -196,7 +196,7 @@ if msg:
             except Exception as e:
                 bot_say(f"죄송합니다. 접수 중 오류가 발생했습니다: {e}")
 
-# ---------------- Rerun 제어 ----------------
-# 전환/완료 상태가 아니고 다음 스텝이 남아 있을 때만 리런
-if (not st.session_state.get("submitted", False)) and st.session_state.get("step_idx", 0) < len(STEPS):
-    st.rerun()
+# # ---------------- Rerun 제어 ----------------
+# # 전환/완료 상태가 아니고 다음 스텝이 남아 있을 때만 리런
+# if (not st.session_state.get("submitted", False)) and st.session_state.get("step_idx", 0) < len(STEPS):
+#     st.rerun()
