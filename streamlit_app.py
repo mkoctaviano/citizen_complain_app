@@ -83,7 +83,8 @@ import base64
 # ---- header ----
 hdr = st.container()
 with hdr:
-    cols = st.columns([1, 8, 3])
+    cols = st.columns([2, 7, 3])  # ← [1,8,3] 에서 살짝 여유 주기
+
 
     with cols[0]:
         if LOGO:
