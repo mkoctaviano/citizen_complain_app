@@ -85,14 +85,16 @@ with hdr:
     cols = st.columns([1, 8, 3])
 with cols[0]:
     if LOGO:
-        try:
-            st.logo(LOGO)
-        except Exception:
-            st.image(LOGO, use_column_width=True)
-    st.markdown(
-        "<div style='text-align:center;font-weight:700;font-size:1rem;color:#0B2F59;'>민심청</div>",
-        unsafe_allow_html=True
-    )
+        st.markdown(
+            f"""
+            <div style="display:flex;align-items:center;gap:12px;">
+                <img src="{LOGO}" style="height:60px;">
+                <span style="font-weight:900;font-size:2rem;color:#0B2F59;">민심청</span>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
 
     with cols[2]:
         st.markdown(
