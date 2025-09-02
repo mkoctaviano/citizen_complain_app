@@ -7,4 +7,6 @@ google-auth==2.33.0
 psycopg[binary]==3.2.9
 SQLAlchemy==2.0.32
 streamlit-aggrid==0.3.4.post3
+pydub>=0.25.1
+
 
