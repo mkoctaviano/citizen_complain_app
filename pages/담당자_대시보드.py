@@ -395,26 +395,25 @@ with a2:
     total = float(dept_counts["건수"].sum())
     dept_counts["비율"] = dept_counts["건수"] / total
 
-    # ✅ 범례에 쓸 라벨: "부서 (xx.x%)"
+    # ✅ 범례용 라벨: "부서 (xx.x%)"
     dept_counts["부서라벨"] = dept_counts.apply(
         lambda r: f"{r['부서']} ({r['비율']:.1%})", axis=1
     )
 
     if not dept_counts.empty:
-        # ✅ 두 차트가 동일하게 쓰는 색상 스케일(부서라벨 기준)
+        # 두 차트가 공유할 색상 스케일 (도메인 고정)
         color_domain = dept_counts["부서라벨"].tolist()
         color_scale  = alt.Scale(domain=color_domain, scheme="category20")
 
-        # ── 가로 막대 ─────────────────────────────────────────────
-        bar_height = max(220, 28 * len(dept_counts))  # 항목수에 따라 자동 증가
+        # ── 가로 막대 ── (부서 많아지면 자동으로 높이 증가)
+        bar_height = max(220, 28 * len(dept_counts))
         bar_chart = (
             alt.Chart(dept_counts)
             .mark_bar(cornerRadiusTopRight=5, cornerRadiusBottomRight=5)
             .encode(
                 x=alt.X("건수:Q", axis=alt.Axis(title="민원 건수", labelFontSize=12)),
                 y=alt.Y("부서:N", sort="-x", axis=alt.Axis(title=None, labelFontSize=12)),
-                # 색은 범례 라벨과 동일 기준으로 매핑(범례는 pie에만 표시)
-                color=alt.Color("부서라벨:N", scale=color_scale, legend=None),
+                color=alt.Color("부서라벨:N", scale=color_scale, legend=None),  # 범례는 숨김
                 tooltip=[
                     alt.Tooltip("부서:N", title="부서"),
                     alt.Tooltip("건수:Q", title="건수"),
@@ -428,13 +427,12 @@ with a2:
             align="left", baseline="middle", dx=3, fontSize=11
         ).encode(text="건수:Q")
 
-        # ── 도넛(범례에 % 표시) ───────────────────────────────────
+        # ── 도넛 ── (범례에 % 표시)
         pie_chart = (
             alt.Chart(dept_counts)
             .mark_arc(innerRadius=60)
             .encode(
                 theta=alt.Theta("건수:Q"),
-                # ✅ 범례에 "부서 (xx.x%)"가 그대로 보이도록
                 color=alt.Color(
                     "부서라벨:N",
                     scale=color_scale,
@@ -455,8 +453,9 @@ with a2:
             .properties(width=360, height=360, title="부서별 민원 비율")
         )
 
-        # ✅ 가로 막대 + 도넛(범례에 %) 나란히
-        st.altair_chart((bar_chart + bar_text) | pie_chart, use_container_width=False)
+        # ▶ 나란히 + 범례 강제 노출 (색상 스케일을 독립시켜 범례 숨김 이슈 방지)
+        combo = ((bar_chart + bar_text) | pie_chart).resolve_scale(color="independent")
+        st.altair_chart(combo, use_container_width=False)
     else:
         st.info("부서 데이터가 없습니다.")
 
