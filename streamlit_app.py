@@ -83,12 +83,17 @@ st.markdown(
 hdr = st.container()
 with hdr:
     cols = st.columns([1, 8, 3])
-    with cols[0]:
-        if LOGO:
-            try:
-                st.logo(LOGO)
-            except Exception:
-                st.image(LOGO, use_column_width=True)
+ with cols[0]:
+    if LOGO:
+        try:
+            st.logo(LOGO)
+        except Exception:
+            st.image(LOGO, use_column_width=True)
+    st.markdown(
+        "<div style='text-align:center;font-weight:700;font-size:1rem;color:#0B2F59;'>민심청</div>",
+        unsafe_allow_html=True
+    )
+
     with cols[2]:
         st.markdown(
             f"""<div style="display:flex;align-items:center;justify-content:flex-end;
@@ -105,7 +110,7 @@ st.markdown(
 st.markdown('<div class="k-card">', unsafe_allow_html=True)
 st.markdown(
     '<div class="k-hero"><h1>원하시는 화면을 선택하세요</h1>'
-    '<p>시민은 민원을 접수하고, 담당자는 대시보드에서 확인합니다.</p></div>',
+    '<p>민원인께서는 "접수 화면으로 이동"을 눌러주세요.</p></div>',
     unsafe_allow_html=True,
 )
 
@@ -113,7 +118,7 @@ c1, c2 = st.columns(2)
 
 with c1:
     st.markdown('<div class="k-tile">', unsafe_allow_html=True)
-    st.markdown("### 🙋 시민 접수")
+    st.markdown("### 민원접수")
     st.write("• 챗봇 • 음성 녹음 • 접수 확인 안내")
     st.markdown('<div class="k-btn-primary">', unsafe_allow_html=True)
     if st.button("시민 화면으로 이동", use_container_width=True):
@@ -123,8 +128,8 @@ with c1:
 
 with c2:
     st.markdown('<div class="k-tile">', unsafe_allow_html=True)
-    st.markdown("### 🛡️ 담당자(공무원)")
-    st.write("• 대시보드 • 분석 • 티켓 상세")
+    st.markdown("### 담당자")
+    st.write("• 대시보드 • 분석")
     pw = st.text_input("접속 비밀번호", type="password", key="off_pw")
     st.markdown('<div class="k-btn-secondary">', unsafe_allow_html=True)
     if st.button("담당자 화면으로 이동", use_container_width=True):
