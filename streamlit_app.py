@@ -80,20 +80,26 @@ st.markdown(
 )
 import base64
 
-with cols[0]:
-    if LOGO:
-        with open(LOGO, "rb") as f:
-            b64_logo = base64.b64encode(f.read()).decode()
+# ---- header ----
+hdr = st.container()
+with hdr:
+    cols = st.columns([1, 8, 3])
 
-        st.markdown(
-            f"""
-            <div style="display:inline-flex;align-items:center;gap:12px;white-space:nowrap;">
-                <img src="data:image/png;base64,{b64_logo}" style="height:60px;">
-                <span style="font-weight:900;font-size:2rem;color:#0B2F59;">민심청</span>
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
+    with cols[0]:
+        if LOGO:
+            with open(LOGO, "rb") as f:
+                b64_logo = base64.b64encode(f.read()).decode()
+
+            st.markdown(
+                f"""
+                <div style="display:inline-flex;align-items:center;gap:12px;white-space:nowrap;">
+                    <img src="data:image/png;base64,{b64_logo}" style="height:60px;">
+                    <span style="font-weight:900;font-size:2rem;color:#0B2F59;">민심청</span>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+
 
     with cols[2]:
         st.markdown(
