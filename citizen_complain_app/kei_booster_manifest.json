@@ -1,0 +1,8 @@
+{
+  "saved_at": "2025-08-27 08:04:00",
+  "csv_path": "./_merged_unidept_88_6cols_with_parent_fix_clean.csv",
+  "output_path": "./kei_booster.pkl",
+  "n_keywords": 184586,
+  "n_intents": 9,
+  "sbert_model": "jhgan/ko-sroberta-multitask"
+}

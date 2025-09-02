@@ -1,0 +1,92 @@
+{
+  "건설·안전": {
+    "type": "model",
+    "path": "/content/drive/MyDrive/KDS/model_final/child/건설_안전",
+    "n_classes": 9
+  },
+  "건축": {
+    "type": "model",
+    "path": "/content/drive/MyDrive/KDS/model_final/child/건축",
+    "n_classes": 3
+  },
+  "경제·산업": {
+    "type": "model",
+    "path": "/content/drive/MyDrive/KDS/model_final/child/경제_산업",
+    "n_classes": 4
+  },
+  "교통": {
+    "type": "model",
+    "path": "/content/drive/MyDrive/KDS/model_final/child/교통",
+    "n_classes": 10
+  },
+  "기술지원": {
+    "type": "trivial",
+    "label": "기술지원과"
+  },
+  "농업·축산": {
+    "type": "model",
+    "path": "/content/drive/MyDrive/KDS/model_final/child/농업_축산",
+    "n_classes": 3
+  },
+  "도시·개발·주택": {
+    "type": "model",
+    "path": "/content/drive/MyDrive/KDS/model_final/child/도시_개발_주택",
+    "n_classes": 10
+  },
+  "문화·체육·관광": {
+    "type": "model",
+    "path": "/content/drive/MyDrive/KDS/model_final/child/문화_체육_관광",
+    "n_classes": 5
+  },
+  "보건·건강": {
+    "type": "model",
+    "path": "/content/drive/MyDrive/KDS/model_final/child/보건_건강",
+    "n_classes": 4
+  },
+  "복지·가족·청소년": {
+    "type": "model",
+    "path": "/content/drive/MyDrive/KDS/model_final/child/복지_가족_청소년",
+    "n_classes": 8
+  },
+  "부대협력": {
+    "type": "trivial",
+    "label": "부대협력과"
+  },
+  "산림·녹지·공원": {
+    "type": "model",
+    "path": "/content/drive/MyDrive/KDS/model_final/child/산림_녹지_공원",
+    "n_classes": 8
+  },
+  "상하수도": {
+    "type": "model",
+    "path": "/content/drive/MyDrive/KDS/model_final/child/상하수도",
+    "n_classes": 2
+  },
+  "세무": {
+    "type": "trivial",
+    "label": "세무과"
+  },
+  "소방정책": {
+    "type": "trivial",
+    "label": "소방정책과"
+  },
+  "일자리창출": {
+    "type": "trivial",
+    "label": "일자리창출과"
+  },
+  "해양·항만": {
+    "type": "model",
+    "path": "/content/drive/MyDrive/KDS/model_final/child/해양_항만",
+    "n_classes": 3
+  },
+  "행정·총무": {
+    "type": "model",
+    "path": "/content/drive/MyDrive/KDS/model_final/child/행정_총무",
+    "n_classes": 5
+  },
+  "환경·위생": {
+    "type": "model",
+    "path": "/content/drive/MyDrive/KDS/model_final/child/환경_위생",
+    "n_classes": 8
+  }
+}

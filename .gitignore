@@ -1,0 +1,42 @@
+# --- SYSTEM & PYTHON ---
+__pycache__/
+*.py[cod]
+*.so
+*.DS_Store
+*.log
+
+# --- VIRTUAL ENVIRONMENTS ---
+.venv/
+venv/
+
+# --- SECRETS & CONFIG ---
+.env
+.env.*
+
+# --- MODEL FILES ---
+*.pkl
+*.pt
+*.h5
+*.joblib
+
+# --- MODEL FOLDERS ---
+citizen_complain_app/retriever_bert/
+citizen_complain_app/priority_model/
+citizen_complain_app/main_model/
+citizen_complain_app/child_models/
+citizen_complain_app/cause_tagger/
+
+# --- RAW FILES ---
+citizen_complain_app/*.xlsx
+data/
+audio/
+recordings/
+storage/
+test_storage/
+
+# --- STREAMLIT ---
+.streamlit/secrets.toml
+
+# --- IDE/EDITOR FOLDERS ---
+.vscode/
+.idea/
