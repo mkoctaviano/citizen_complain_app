@@ -438,7 +438,7 @@ with a2:
                     scale=color_scale,
                     legend=alt.Legend(
                         title="부서 (비율)",
-                        orient="right",
+                        orient="bottom",
                         labelFontSize=12,
                         titleFontSize=12,
                         symbolSize=200,
