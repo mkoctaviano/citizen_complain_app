@@ -19,6 +19,21 @@ import torch
 import torch.nn.functional as F
 import streamlit as st
 
+# put near imports
+import shutil, os, time
+import streamlit as st
+
+st.sidebar.title("⚙️ Diagnostics")
+st.sidebar.write({
+    "ffmpeg": shutil.which("ffmpeg") or "NOT FOUND",
+    "gcp_secrets": "present" if "gcp_service_account" in st.secrets else "missing",
+    "device": ("cuda" if torch.cuda.is_available() else "cpu"),
+})
+# avoid tokenizer thread storms
+os.environ["TOKENIZERS_PARALLELISM"] = "false"
+torch.set_num_threads(1)
+
+
 from transformers import (
     AutoTokenizer,
     AutoModel,
@@ -407,8 +422,14 @@ tok_urg, mdl_urg, tok_emo, mdl_emo = load_priority_models(URGENCY_DIR, EMOTION_D
 # -------------------------
 # Voice input (optional)
 # -------------------------
+# -------------------------
+# Voice input (optional)
+# -------------------------
 st.divider()
 st.subheader("🎙️ 음성 입력 (선택)")
+
+STT_PHRASE_HINTS = ["지방세","주민등록","민원","불법주정차","단수","정전","누수"]
+MAX_MS = 120_000  # 2 minutes safety limit
 
 # Use built-in mic if available; otherwise fall back to uploader
 audio_rec = getattr(st, "audio_input", None)
@@ -423,30 +444,40 @@ if voice_file is not None:
     st.audio(audio_bytes)
 
     c1, c2 = st.columns(2)
-    do_fill   = c1.button("📝 음성 → 텍스트 (입력란에 채우기)", use_container_width=True)
-    do_run    = c2.button("⚡ 음성 → 텍스트 → 즉시 분석", use_container_width=True)
+    do_fill = c1.button("📝 음성 → 텍스트 (입력란에 채우기)", use_container_width=True)
+    do_run  = c2.button("⚡ 즉시 분석", use_container_width=True)
 
     if do_fill or do_run:
         try:
-            with st.spinner("음성 인식 중…"):
-                transcript = transcribe_bytes(
-                    audio_bytes,
-                    language_code="ko-KR",
-                    phrase_hints=STT_PHRASE_HINTS
-                )
-            if not transcript:
-                st.warning("음성을 인식하지 못했습니다.")
+            from pydub import AudioSegment
+            import io
+
+            # Quick duration check to avoid endless STT jobs
+            _a = AudioSegment.from_file(io.BytesIO(audio_bytes))
+            dur_ms = len(_a)
+            st.info(f"Audio length: {dur_ms/1000:.1f}s")
+            if dur_ms > MAX_MS:
+                st.error("Audio is too long (>2 min). Please upload a shorter clip or use GCS.")
             else:
-                # Put transcript into the text box the app already uses
-                st.session_state.input_text = transcript
-                st.success("전사 완료: 아래 입력란에 텍스트를 채웠습니다.")
-                if do_run:
-                    # Trigger the same path as the text button
-                    # by simulating a click: set a session flag and rerun.
-                    st.session_state._run_clicked_from_voice = True
-                    st.rerun()
+                from citizen_complain_app.stt_google import transcribe_bytes
+                with st.spinner("음성 인식 중…"):
+                    transcript = transcribe_bytes(
+                        audio_bytes,
+                        language_code="ko-KR",
+                        phrase_hints=STT_PHRASE_HINTS,
+                        timeout_sec=300,   # hard timeout
+                    )
+                if not transcript:
+                    st.warning("음성을 인식하지 못했습니다.")
+                else:
+                    st.session_state.input_text = transcript
+                    st.success("전사 완료: 아래 입력란에 텍스트를 채웠습니다.")
+                    if do_run:
+                        st.session_state._run_clicked_from_voice = True
+                        st.rerun()
         except Exception as e:
             st.error(f"STT 오류: {e}")
+
 
 # Input
 DEMO_TEXT = "지하철 역사에서 연기가 발생하여 승객 대피 필요합니다."
