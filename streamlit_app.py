@@ -156,3 +156,4 @@ with c2:
 st.markdown('</div>', unsafe_allow_html=True)
 st.caption("민심청")
 
+st.write("Keys in secrets:", list(st.secrets.keys()))
