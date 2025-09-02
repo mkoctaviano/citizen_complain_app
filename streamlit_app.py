@@ -158,5 +158,4 @@ st.caption("민심청")
 
 import streamlit as st
 
-st.write("All keys:", list(st.secrets.keys()))
-st.write("GCP_SERVICE_ACCOUNT exists:", "GCP_SERVICE_ACCOUNT" in st.secrets)
+
