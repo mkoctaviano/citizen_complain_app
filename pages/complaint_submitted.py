@@ -75,16 +75,16 @@ import streamlit as st
 
 # ... your message UI above ...
 
-# --- Auto-redirect to the app's landing page inside citizen_complain_app ---
-import time
+import time, streamlit as st
+
+# ... your success UI ...
 
 time.sleep(3)
 try:
-    # Target must be a file inside the SAME app root (citizen_complain_app/)
-    st.switch_page("app.py")   # <- if your landing page is different, put that filename here
+    st.switch_page("pages/첫봇_민원_접수.py")  # ← use the exact filename you want
 except Exception:
-    # Fallback: show a button to navigate (works on older Streamlit too)
     st.warning("자동 이동에 실패했습니다. 아래 버튼을 눌러 이동하세요.")
     if st.button("🏠 홈으로 이동"):
-        st.switch_page("app.py")
+        st.switch_page("pages/첫봇_민원_접수.py")
     st.stop()
+
