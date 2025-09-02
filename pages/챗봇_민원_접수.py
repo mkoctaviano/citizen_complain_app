@@ -1,3 +1,6 @@
+#!/usr/bin/env python
+# coding: utf-8
+
 import sys
 from pathlib import Path
 sys.path.append(str(Path(__file__).resolve().parent.parent))
@@ -5,6 +8,7 @@ sys.path.append(str(Path(__file__).resolve().parent.parent))
 import os
 import re
 import time
+
 import streamlit as st
 import utils.env  # ensures .env is loaded
 from utils.voice import record_voice, transcribe_google
@@ -20,17 +24,21 @@ st.set_page_config(
 )
 hide_multipage_nav_css()
 
-# ---------------- 홈으로 버튼 (with reset) ----------------
+# ---------------- Session state init (once only) ----------------
+if "chat_history" not in st.session_state:
+    st.session_state.chat_history = []
+    st.session_state.answers = {"name": None, "phone": None, "address": None, "content": None}
+    st.session_state.step_idx = 0
+    st.session_state.submitted = False
+    st.session_state.voice = None
+
+# ---------------- Home 버튼 ----------------
 if st.button("🏠 홈으로"):
-    for key in list(st.session_state.keys()):
-        del st.session_state[key]
+    st.session_state.clear()  # <-- Clear all session states
     st.switch_page("streamlit_app.py")
     st.stop()
 
-# ---------------- Init ----------------
-init_db()
-
-# -------- Validation helpers --------
+# ---------------- Validation helpers ----------------
 def validate_name(x: str):
     x = x.strip()
     return (len(x) >= 1, x, "이름을 다시 입력해 주세요.")
@@ -66,44 +74,35 @@ STEPS = [
     {"key": "address", "prompt": "민원이 발생한 주소를 입력해 주세요. 보다 정확한 안내를 위해 필요합니다.", "validator": validate_address},
     {"key": "content", "prompt": "어떤 민원을 접수하고 싶으신가요? 자세히 말씀해 주시면 빠르게 도와드릴 수 있어요!", "validator": validate_content},
 ]
-CONTENT_STEP_IDX = next(i for i, s in enumerate(STEPS) if s["key"] == "content")
 
-# ---------------- Session state ----------------
-if "chat_history" not in st.session_state:
-    st.session_state.chat_history = []
-if "answers" not in st.session_state:
-    st.session_state.answers = {}
-if "step_idx" not in st.session_state:
-    st.session_state.step_idx = 0
-if "submitted" not in st.session_state:
-    st.session_state.submitted = False
-if "voice" not in st.session_state:
-    st.session_state.voice = None
+# ---------------- Init ----------------
+init_db()
 
-# ---------------- Bot/User Helpers ----------------
+# ---------------- Chat rendering ----------------
 def bot_say(msg: str):
     st.session_state.chat_history.append({"role": "assistant", "content": msg})
 
 def user_say(msg: str):
     st.session_state.chat_history.append({"role": "user", "content": msg})
 
-# ---------------- First Bot Message ----------------
 if not st.session_state.chat_history:
     bot_say(STEPS[0]["prompt"])
 
-# ---------------- Render Chat ----------------
 for m in st.session_state.chat_history:
     with st.chat_message("assistant" if m["role"] == "assistant" else "user"):
         st.write(m["content"])
 
-# ---------------- Voice Input (content step only) ----------------
+# ---------------- Voice input (only at content step) ----------------
 VOICE_ON = True
+CONTENT_STEP_IDX = 3
+
 if VOICE_ON and st.session_state.step_idx == CONTENT_STEP_IDX:
     with st.expander("🎤 음성으로 내용 입력 (선택)"):
         use_voice = st.checkbox("음성 입력 사용하기", value=False)
 
         if use_voice:
             st.markdown("**녹음 버튼을 누른 뒤 말씀해 주세요.**")
+
             try:
                 rec = record_voice(just_once=True)
             except Exception as e:
@@ -129,12 +128,11 @@ if VOICE_ON and st.session_state.step_idx == CONTENT_STEP_IDX:
                     if st.session_state.step_idx < len(STEPS):
                         bot_say(STEPS[st.session_state.step_idx]["prompt"])
                     else:
-                        pass
+                        pass  # Skip to final submission
                     st.rerun()
 
-# ---------------- Chat Input ----------------
+# ---------------- Chat input (only once per run) ----------------
 msg = st.chat_input("메시지를 입력하세요…")
-
 if msg:
     step = STEPS[st.session_state.step_idx]
     ok, val, err = step["validator"](msg)
@@ -149,15 +147,21 @@ if msg:
         if st.session_state.step_idx < len(STEPS):
             bot_say(STEPS[st.session_state.step_idx]["prompt"])
         else:
+            # Final submission
             try:
+                cap = st.session_state.get("voice", None)
+                기타 = {"voice": {"gs_uri": cap.gs_uri, "duration_sec": cap.duration_sec}} if cap else None
+
                 민원번호 = 민원_등록(
                     접수경로="웹",
-                    이름=st.session_state.answers.get("name"),
-                    연락처=st.session_state.answers.get("phone"),
-                    주소=st.session_state.answers.get("address"),
-                    내용=st.session_state.answers.get("content"),
+                    연락처=st.session_state.answers["phone"],
+                    내용=st.session_state.answers["content"],
                     첨부경로목록=[],
+                    이름=st.session_state.answers["name"],
+                    주소=st.session_state.answers["address"],
+                    # 기타=기타,
                 )
+
                 st.session_state["last_ticket_no"] = 민원번호
                 st.session_state["submitted"] = True
                 st.switch_page("pages/complaint_submitted.py")
