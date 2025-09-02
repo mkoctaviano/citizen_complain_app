@@ -83,7 +83,7 @@ st.markdown(
 hdr = st.container()
 with hdr:
     cols = st.columns([1, 8, 3])
- with cols[0]:
+with cols[0]:
     if LOGO:
         try:
             st.logo(LOGO)
