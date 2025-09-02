@@ -25,6 +25,19 @@ except Exception:
 st.set_page_config(page_title="민원 상세", page_icon="", layout="wide")
 hide_multipage_nav_css()
 
+# ---------- CSS (폰트 크게 + 굵게 + 가운데 정렬) ----------
+st.markdown("""
+    <style>
+    .info-line {
+        font-size: 20px !important;
+        font-weight: bold;
+        text-align: center;
+        margin-bottom: 15px;
+        color: #0B2F59;
+    }
+    </style>
+""", unsafe_allow_html=True)
+
 # ---------- Officer guard (no set_page_config here!) ----------
 def _require_officer():
     if st.session_state.get("role") == "officer":
@@ -220,26 +233,29 @@ if df.empty or qid not in df["민원번호"].values:
 row = df[df["민원번호"] == qid].iloc[0]
 
 # Title
-st.title(f"🧾 민원 #{row['민원번호']}")
+st.title(f"민원 #{row['민원번호']}")
 
-# Top info
 c1, c2, c3, c4 = st.columns([1, 1, 1, 1])
-c1.metric("이름", row.get("이름", ""))
-c2.metric("연락처", row.get("연락처", ""))
-c3.metric("주소", row.get("주소", ""))
-c4.metric("접수일시", convert_timestamp(row.get("접수일시", "")))
+with c1:
+    st.markdown(f'<div class="info-line">이름 : {row.get("이름", "")}</div>', unsafe_allow_html=True)
+with c2:
+    st.markdown(f'<div class="info-line">연락처 : {row.get("연락처", "")}</div>', unsafe_allow_html=True)
+with c3:
+    st.markdown(f'<div class="info-line">주소 : {row.get("주소", "")}</div>', unsafe_allow_html=True)
+with c4:
+    st.markdown(f'<div class="info-line">접수일시 : {convert_timestamp(row.get("접수일시", ""))}</div>', unsafe_allow_html=True)
 
-# Content
-st.markdown("## 민원 내용")
-st.write(row.get("내용", ""))
-
-# Classification (labels only)
+# ---------- Classification ----------
 st.markdown("## 분류 결과")
 r1, r2, r3, r4 = st.columns([1, 1, 1, 1])
-r1.metric("부서", row.get("부서", ""))
-r2.metric("세부분야", row.get("세부분야", ""))
-r3.metric("긴급도", row.get("긴급도", ""))
-r4.metric("감정", row.get("감정", ""))
+with r1:
+    st.markdown(f'<div class="info-line">부서 : {row.get("부서", "")}</div>', unsafe_allow_html=True)
+with r2:
+    st.markdown(f'<div class="info-line">세부분야 : {row.get("세부분야", "")}</div>', unsafe_allow_html=True)
+with r3:
+    st.markdown(f'<div class="info-line">긴급도 : {row.get("긴급도", "")}</div>', unsafe_allow_html=True)
+with r4:
+    st.markdown(f'<div class="info-line">감정 : {row.get("감정", "")}</div>', unsafe_allow_html=True)
 
 # Extras (cause + similar)
 extra = row.get("기타") or row.get("extra")
