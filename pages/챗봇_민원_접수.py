@@ -187,7 +187,7 @@ if msg:
                     첨부경로목록=[],
                     이름=st.session_state.answers["name"],
                     주소=st.session_state.answers["address"],
-                    기타=기타,
+                    # 기타=기타,
                 )
 
                 st.session_state["last_ticket_no"] = 민원번호
