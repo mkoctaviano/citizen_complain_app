@@ -194,7 +194,7 @@ if msg:
                     "name": st.session_state.answers["name"],
                     "phone": st.session_state.answers["phone"],
                     "address": st.session_state.answers["address"],
-                }
+                }  
 
                 # Clear transient UI state
                 for k in ("answers", "chat_history", "step_idx", "voice"):
