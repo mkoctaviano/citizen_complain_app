@@ -85,27 +85,29 @@ hdr = st.container()
 with hdr:
     cols = st.columns([1, 8, 3])
 
-with cols[0]:
-    if LOGO:
-        with open(LOGO, "rb") as f:
-            b64_logo = base64.b64encode(f.read()).decode()
+    with cols[0]:
+        if LOGO:
+            with open(LOGO, "rb") as f:
+                b64_logo = base64.b64encode(f.read()).decode()
 
-        st.markdown(
-            f"""
-            <div style="display:inline-flex;align-items:center;gap:16px;white-space:nowrap;">
-                <img src="data:image/png;base64,{b64_logo}" 
-                     style="height:80px;width:auto;object-fit:contain;border-radius:50%;">
-                <span style="font-weight:900;font-size:2.2rem;color:#0B2F59;">민심청</span>
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
-
+            st.markdown(
+                f"""
+                <div style="
+                    display:inline-flex; align-items:center; gap:16px;
+                    white-space:nowrap; flex-wrap:nowrap; overflow:visible;
+                ">
+                    <img src="data:image/png;base64,{b64_logo}"
+                         style="height:80px; width:auto; object-fit:contain;">
+                    <span style="font-weight:900; font-size:2.2rem; color:#0B2F59;">민심청</span>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
 
     with cols[2]:
         st.markdown(
             f"""<div style="display:flex;align-items:center;justify-content:flex-end;
-                 height:46px;color:{BRAND};font-weight:700;">민원 포털</div>""",
+                     height:46px;color:{BRAND};font-weight:700;">민원 포털</div>""",
             unsafe_allow_html=True,
         )
 
