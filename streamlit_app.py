@@ -96,6 +96,7 @@ with hdr:
                 <div style="
                     display:inline-flex; align-items:center; gap:16px;
                     white-space:nowrap; flex-wrap:nowrap; overflow:visible;
+                    margin-top:20px;
                 ">
                     <img src="data:image/png;base64,{b64_logo}"
                          style="height:80px; width:auto; object-fit:contain;">
