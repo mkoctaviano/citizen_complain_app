@@ -16,6 +16,11 @@ from utils.voice import record_voice, transcribe_google
 from utils.ui import hide_multipage_nav_css
 from storage import init_db, 민원_등록
 
+import os  # ensure this import exists
+
+# Enable/disable voice via env (Streamlit Secrets)
+VOICE_ON = os.environ.get("ENABLE_VOICE", "1") == "1"
+
 # ---------------- Page config ----------------
 st.set_page_config(
     page_title="민원 접수",
