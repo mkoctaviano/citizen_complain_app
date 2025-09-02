@@ -11,7 +11,7 @@ from pathlib import Path
 import streamlit as st
 import utils.env  # ensures .env is loaded
 import streamlit as st
-from utils.voice import record_voice, transcribe_google  # or long_transcribe_google
+from utils.voice import record_voice, transcribe_google
 
 from utils.ui import hide_multipage_nav_css
 from storage import init_db, 민원_등록
@@ -105,37 +105,41 @@ for m in st.session_state.chat_history:
 
 
 # ---------------- Voice input (content step only) ----------------
-import os
-VOICE_ON = os.getenv("ENABLE_VOICE", "1") == "1"
 
-if VOICE_ON and st.session_state.get("step_idx") is not None:
-    if st.session_state.step_idx == CONTENT_STEP_IDX:
-        st.markdown("**음성으로 내용을 입력하실 수 있습니다.**")
+...
+if VOICE_ON and st.session_state.get("step_idx") == CONTENT_STEP_IDX:
+    st.markdown("**음성으로 내용을 입력하실 수 있습니다.**")
 
-        rec = record_voice(just_once=True)  # <-- rec is defined here
-        if rec is not None:
-            wav_bytes, sr = rec
-            st.audio(wav_bytes, format="audio/wav")
+    rec = record_voice(just_once=True)
+    if rec is not None:
+        wav_bytes, sr = rec
+        st.audio(wav_bytes, format="audio/wav")
 
-            with st.spinner("음성 인식 중..."):
-                try:
-                    transcript = transcribe_google(wav_bytes, sr)
-                except Exception as e:
-                    st.error(f"음성 인식 오류: {e}")
-                    transcript = ""
+        with st.spinner("음성 인식 중..."):
+            try:
+                transcript = transcribe_google(
+                    wav_bytes, sr,
+                    language_code="ko-KR",
+                    phrase_hints=[
+                        "민원", "불편", "건의", "접수", "도로", "교통", "쓰레기",
+                        "대중교통", "지하철", "버스", "전기", "상하수도"
+                    ],
+                    timeout_sec=45,  # avoid infinite spinner
+                )
+            except Exception as e:
+                st.error(f"STT 설정 오류: {e}")
+                transcript = ""
 
-            if transcript:
-                user_say(transcript)
-                st.session_state.answers["content"] = transcript
+        if transcript:
+            user_say(transcript)
+            st.session_state.answers["content"] = transcript
+            st.session_state.step_idx += 1
+            if st.session_state.step_idx < len(STEPS):
+                bot_say(STEPS[st.session_state.step_idx]["prompt"])
+            st.rerun()
+        else:
+            st.warning("음성을 인식하지 못했습니다. 다시 시도해 주세요.")
 
-                # (optional silent hook)
-                # try: _ = ComplaintRouter.predict(transcript)
-                # except Exception: pass
-
-                st.session_state.step_idx += 1
-                if st.session_state.step_idx < len(STEPS):
-                    bot_say(STEPS[st.session_state.step_idx]["prompt"])
-                st.rerun()
 
 
 # ---------------- Chat input ----------------
