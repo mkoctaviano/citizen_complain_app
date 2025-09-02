@@ -1,16 +1,14 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[ ]:
-
-
 # pages/챗봇_민원_접수.py
+import os
 import re
 import time
 from pathlib import Path
+
 import streamlit as st
 import utils.env  # ensures .env is loaded
-import streamlit as st
 from utils.voice import record_voice, transcribe_google  # or long_transcribe_google
 
 from utils.ui import hide_multipage_nav_css
@@ -25,12 +23,10 @@ st.set_page_config(
 )
 hide_multipage_nav_css()
 
-# back to Home
-import streamlit as st
-
-# Only works inside multipage apps
+# ---------------- Home 버튼 ----------------
 if st.button("🏠 홈으로"):
-    st.switch_page("streamlit_app.py")  # filename of the page script
+    st.switch_page("streamlit_app.py")
+    st.stop()  # 이후 코드 실행 방지
 
 st.title("민원 접수")
 st.caption("대화형으로 정보를 입력하시면 민원이 접수됩니다. 담당 부서가 확인 후 처리합니다.")
@@ -69,9 +65,9 @@ def validate_content(x: str):
 
 # -------- Conversation steps --------
 STEPS = [
-    {"key": "name", "prompt": "민원인 분의 성함을 알려주실수 있을까요?.", "validator": validate_name},
-    {"key": "phone", "prompt": "연락 가능한 전화번호를 입력해 주시겠어요? 예) 010-1234-5678 형식으로 입력해주세요", "validator": validate_phone},
-    {"key": "address", "prompt": "민원이 발생한 주소를 입력해주세요. 보다 정확한 안내를 위해 필요합니다.", "validator": validate_address},
+    {"key": "name", "prompt": "민원인 분의 성함을 알려주실 수 있을까요?", "validator": validate_name},
+    {"key": "phone", "prompt": "연락 가능한 전화번호를 입력해 주시겠어요? 예) 010-1234-5678", "validator": validate_phone},
+    {"key": "address", "prompt": "민원이 발생한 주소를 입력해 주세요. 보다 정확한 안내를 위해 필요합니다.", "validator": validate_address},
     {"key": "content", "prompt": "어떤 민원을 접수하고 싶으신가요? 자세히 말씀해 주시면 빠르게 도와드릴 수 있어요!", "validator": validate_content},
 ]
 CONTENT_STEP_IDX = next(i for i, s in enumerate(STEPS) if s["key"] == "content")
@@ -85,7 +81,7 @@ if "step_idx" not in st.session_state:
     st.session_state.step_idx = 0
 if "submitted" not in st.session_state:
     st.session_state.submitted = False
-if "voice" not in st.session_state:   # holds utils.voice.VoiceCapture
+if "voice" not in st.session_state:   # holds utils.voice.VoiceCapture (옵션)
     st.session_state.voice = None
 
 def bot_say(msg: str):
@@ -103,28 +99,14 @@ for m in st.session_state.chat_history:
     with st.chat_message("assistant" if m["role"] == "assistant" else "user"):
         st.write(m["content"])
 
-# ---------------- Submitted state ----------------
-if st.session_state.submitted:
-    with st.chat_message("assistant"):
-        st.success(
-            "민원이 정상적으로 접수되었습니다.\n\n"
-            "소중한 의견을 남겨주셔서 감사합니다.\n"
-            "신속하고 성실하게 처리하겠습니다."
-        )
-    time.sleep(2)
-    st.session_state.clear()
-    st.rerun()
-
-
 # ---------------- Voice input (content step only) ----------------
-import os
 VOICE_ON = os.getenv("ENABLE_VOICE", "1") == "1"
 
 if VOICE_ON and st.session_state.get("step_idx") is not None:
     if st.session_state.step_idx == CONTENT_STEP_IDX:
         st.markdown("**음성으로 내용을 입력하실 수 있습니다.**")
 
-        rec = record_voice(just_once=True)  # <-- rec is defined here
+        rec = record_voice(just_once=True)
         if rec is not None:
             wav_bytes, sr = rec
             st.audio(wav_bytes, format="audio/wav")
@@ -140,28 +122,23 @@ if VOICE_ON and st.session_state.get("step_idx") is not None:
                 user_say(transcript)
                 st.session_state.answers["content"] = transcript
 
-                # (optional silent hook)
-                # try: _ = ComplaintRouter.predict(transcript)
-                # except Exception: pass
-
                 st.session_state.step_idx += 1
                 if st.session_state.step_idx < len(STEPS):
                     bot_say(STEPS[st.session_state.step_idx]["prompt"])
                 st.rerun()
 
-
 # ---------------- Chat input ----------------
 msg = st.chat_input("메시지를 입력하세요…")
 
-# Ensure session state is initialized safely
+# 안전 초기화(중복 방지)
 if "step_idx" not in st.session_state:
     st.session_state.step_idx = 0
 if "answers" not in st.session_state:
     st.session_state.answers = {}
 
-# Prevent index error before accessing STEPS
+# 인덱스 범위 보호
 if st.session_state.step_idx >= len(STEPS):
-    st.session_state.step_idx = len(STEPS) - 1  # Clamp to last valid index
+    st.session_state.step_idx = len(STEPS) - 1
 
 if msg:
     user_say(msg)
@@ -173,22 +150,21 @@ if msg:
     else:
         st.session_state.answers[step["key"]] = val
 
-        # ----- Silent model call when the content step is filled -----
+        # (옵션) content 단계에서 후처리/모델 호출 가능
         if step["key"] == "content":
             try:
                 text = st.session_state.answers["content"]
-                # _pred = ComplaintRouter.predict(text)   # silent
-                # st.session_state["model_pred"] = _pred  # optional
+                # _pred = ComplaintRouter.predict(text)
+                # st.session_state["model_pred"] = _pred
             except Exception:
                 pass
-        # ------------------------------------------------------------
 
         st.session_state.step_idx += 1
 
         if st.session_state.step_idx < len(STEPS):
             bot_say(STEPS[st.session_state.step_idx]["prompt"])
         else:
-            # save and route as you already do
+            # ----- 최종 저장 & 페이지 전환 -----
             try:
                 cap = st.session_state.get("voice", None)
                 기타 = {"voice": {"gs_uri": cap.gs_uri, "duration_sec": cap.duration_sec}} if cap else None
@@ -203,15 +179,17 @@ if msg:
                     기타=기타,
                 )
 
-                #  Clear everything after submission
-                for k in ("answers", "chat_history", "step_idx", "submitted", "voice"):
-                    st.session_state.pop(k, None)
+                # 전환에 필요한 최소 정보만 남김
+                st.session_state["last_ticket_no"] = 민원번호
+                st.session_state["submitted"] = True
 
                 st.switch_page("pages/complaint_submitted.py")
+                st.stop()  # ✅ 전환 후 즉시 중단
 
             except Exception as e:
                 bot_say(f"죄송합니다. 접수 중 오류가 발생했습니다: {e}")
 
-# Keep chat loop going safely
-if st.session_state.get("step_idx", 0) < len(STEPS):
+# ---------------- Rerun 제어 ----------------
+# 전환/완료 상태가 아니고 다음 스텝이 남아 있을 때만 리런
+if (not st.session_state.get("submitted", False)) and st.session_state.get("step_idx", 0) < len(STEPS):
     st.rerun()
