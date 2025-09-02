@@ -352,6 +352,8 @@ with a1:
     else:
         st.info("긴급도 점수(urgency) 정보를 찾을 수 없습니다.")
 
+import altair as alt
+
 with a2:
     st.subheader("부서별 민원 건수")
     dept_counts = (
@@ -360,26 +362,25 @@ with a2:
     dept_counts.columns = ["부서", "건수"]
 
     if not dept_counts.empty:
-        import altair as alt
-
         chart = (
             alt.Chart(dept_counts)
-            .mark_bar(color="#4C72B0")
+            .mark_bar(color="#1f77b4", cornerRadiusTopLeft=5, cornerRadiusTopRight=5)
             .encode(
-                x=alt.X("부서:N", sort="-y", axis=alt.Axis(labelAngle=0, labelFontSize=12)),
-                y=alt.Y("건수:Q"),
+                x=alt.X("부서:N", sort="-y", axis=alt.Axis(labelAngle=0, labelFontSize=12, title=None)),
+                y=alt.Y("건수:Q", axis=alt.Axis(title="민원 건수", labelFontSize=12)),
                 tooltip=["부서", "건수"]
             )
-            .properties(width=600, height=400, title="부서별 민원 건수")
+            .properties(width=400, height=300, title="부서별 민원 건수")
         )
 
         text = chart.mark_text(
-            align="center", baseline="bottom", dy=-2, fontSize=12
+            align="center", baseline="bottom", dy=-2, fontSize=12, color="black"
         ).encode(text="건수:Q")
 
-        st.altair_chart(chart + text, use_container_width=True)
+        st.altair_chart(chart + text, use_container_width=False)
     else:
         st.info("부서 데이터가 없습니다.")
+
 
 
 # ---------- csv download (human-friendly) ----------
