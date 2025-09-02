@@ -78,7 +78,7 @@ st.markdown(
     """,
     unsafe_allow_html=True,
 )
-
+import base64
 # ---- header ----
 hdr = st.container()
 with hdr:
