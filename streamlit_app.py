@@ -1,18 +1,21 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-#  Fix path before any `utils` import
 import sys
 from pathlib import Path
-sys.path.append(str(Path(__file__).resolve().parent))
+
+# 👇 Go one level up from citizen_complain_app/ to include 'utils'
+sys.path.append(str(Path(__file__).resolve().parent.parent))
+
+# Now import
+from utils.ui import hide_multipage_nav_css
+
 
 # Now import everything else
 import os
 import streamlit as st
-from utils.ui import hide_multipage_nav_css  # ✅ after fixing sys.path
+from utils.ui import hide_multipage_nav_css 
 
-# Add project root to sys.path
-sys.path.append(str(Path(__file__).resolve().parent))
 
 
 
