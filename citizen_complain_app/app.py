@@ -9,6 +9,9 @@ import os, json, re, unicodedata
 from pathlib import Path
 from typing import Dict, Any, List, Tuple, Optional
 from collections import Counter, defaultdict
+# STT helper (builds Google client from Streamlit Secrets)
+from citizen_complain_app.stt_google import transcribe_bytes
+
 
 import numpy as np
 import pandas as pd
@@ -401,11 +404,56 @@ retr_E, retr_meta = load_retriever_index(RETR_DIR) if RETR_DIR.exists() else (No
 
 tok_urg, mdl_urg, tok_emo, mdl_emo = load_priority_models(URGENCY_DIR, EMOTION_DIR) if (URGENCY_DIR.exists() and EMOTION_DIR.exists()) else (None, None, None, None)
 
+# -------------------------
+# Voice input (optional)
+# -------------------------
+st.divider()
+st.subheader("🎙️ 음성 입력 (선택)")
+
+# Use built-in mic if available; otherwise fall back to uploader
+audio_rec = getattr(st, "audio_input", None)
+voice_file = audio_rec("Record (ko-KR)") if audio_rec else st.file_uploader(
+    "오디오 업로드 (webm/mp3/m4a/wav/flac/ogg)",
+    type=["webm","mp3","m4a","wav","flac","ogg"],
+    key="voice_uploader",
+)
+
+if voice_file is not None:
+    audio_bytes = voice_file.getvalue()
+    st.audio(audio_bytes)
+
+    c1, c2 = st.columns(2)
+    do_fill   = c1.button("📝 음성 → 텍스트 (입력란에 채우기)", use_container_width=True)
+    do_run    = c2.button("⚡ 음성 → 텍스트 → 즉시 분석", use_container_width=True)
+
+    if do_fill or do_run:
+        try:
+            with st.spinner("음성 인식 중…"):
+                transcript = transcribe_bytes(
+                    audio_bytes,
+                    language_code="ko-KR",
+                    phrase_hints=STT_PHRASE_HINTS
+                )
+            if not transcript:
+                st.warning("음성을 인식하지 못했습니다.")
+            else:
+                # Put transcript into the text box the app already uses
+                st.session_state.input_text = transcript
+                st.success("전사 완료: 아래 입력란에 텍스트를 채웠습니다.")
+                if do_run:
+                    # Trigger the same path as the text button
+                    # by simulating a click: set a session flag and rerun.
+                    st.session_state._run_clicked_from_voice = True
+                    st.rerun()
+        except Exception as e:
+            st.error(f"STT 오류: {e}")
+
 # Input
 DEMO_TEXT = "지하철 역사에서 연기가 발생하여 승객 대피 필요합니다."
 txt = st.text_area("민원 문장 입력", height=140, key="input_text", placeholder="한국어 민원 문장을 입력하세요…")
 c1, c2 = st.columns([1,1])
 run_clicked  = c1.button("🔍 분석 실행", use_container_width=True)
+run_clicked = run_clicked or st.session_state.pop("_run_clicked_from_voice", False)
 demo_clicked = c2.button("🧪 데모 예시 채우기", use_container_width=True)
 if demo_clicked:
     st.session_state.input_text = DEMO_TEXT
