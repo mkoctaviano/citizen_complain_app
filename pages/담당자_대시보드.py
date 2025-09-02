@@ -374,7 +374,7 @@ with a2:
                 y=alt.Y("건수:Q", axis=alt.Axis(title="민원 건수", labelFontSize=12)),
                 tooltip=["부서", "건수"]
             )
-            .properties(width=350, height=300, title="부서별 민원 건수 (Bar)")
+            .properties(width=350, height=300, title="부서별 민원 건수")
         )
 
         bar_text = bar_chart.mark_text(
@@ -390,7 +390,7 @@ with a2:
                 color=alt.Color("부서:N", legend=alt.Legend(title="부서")),
                 tooltip=["부서", "건수"]
             )
-            .properties(width=300, height=300, title="부서별 민원 비율 (Pie)")
+            .properties(width=300, height=300, title="부서별 민원 비율")
         )
 
         # 두 개 나란히 보여주기
