@@ -22,7 +22,7 @@ except Exception:
         pass
 
 # ---- MUST be first Streamlit call on this page ----
-st.set_page_config(page_title="민원 상세", page_icon="🧾", layout="wide")
+st.set_page_config(page_title="민원 상세", page_icon="", layout="wide")
 hide_multipage_nav_css()
 
 # ---------- Officer guard (no set_page_config here!) ----------
@@ -132,7 +132,7 @@ def _clean_similar_text(raw_text: Any) -> str:
     return s
 
 def render_cause_block(cause: Optional[Dict]):
-    st.markdown("## 🧩 원인 추출")
+    st.markdown("## 원인 추출")
     if not cause:
         st.info("원인 추출 결과가 없습니다.")
         return
@@ -230,11 +230,11 @@ c3.metric("주소", row.get("주소", ""))
 c4.metric("접수일시", convert_timestamp(row.get("접수일시", "")))
 
 # Content
-st.markdown("## 📝 민원 내용")
+st.markdown("## 민원 내용")
 st.write(row.get("내용", ""))
 
 # Classification (labels only)
-st.markdown("## 📌 분류 결과")
+st.markdown("## 분류 결과")
 r1, r2, r3, r4 = st.columns([1, 1, 1, 1])
 r1.metric("부서", row.get("부서", ""))
 r2.metric("세부분야", row.get("세부분야", ""))
