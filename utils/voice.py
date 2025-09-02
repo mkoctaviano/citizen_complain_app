@@ -84,14 +84,4 @@ def transcribe_google(wav_bytes: bytes, sample_rate: int, language_code="ko-KR",
     return " ".join([p for p in pieces if p]).strip()
 
 
-import streamlit as st
-
-def _load_sa_from_secrets():
-    bag = st.secrets
-    sa = bag.get("GCP_SERVICE_ACCOUNT") or bag.get("gcp_service_account")
-    if not sa:
-        # Helpful error that shows what keys *are* loaded
-        raise KeyError(f"GCP service account missing. Available keys: {list(bag.keys())}")
-    # st.secrets returns a Mapping (not a JSON string), so just cast to dict:
-    return dict(sa)
 
