@@ -425,34 +425,34 @@ with a2:
         bar_text = bar_chart.mark_text(
             align="left", baseline="middle", dx=3, fontSize=11
         ).encode(text="건수:Q")
-# ✅ 도넛(원형) — 내부에 % 라벨
-    pie_chart = (
-        alt.Chart(dept_counts)
-        .mark_arc(innerRadius=60)
-        .encode(
-            theta="건수:Q",
-            color=alt.Color("부서:N", scale=color_scale, legend=alt.Legend(title="부서")),
-            tooltip=[
-                alt.Tooltip("부서:N", title="부서"),
-                alt.Tooltip("건수:Q", title="건수"),
-                alt.Tooltip("비율:Q", format=".1%", title="비율")
-            ],
+        # ✅ 도넛(원형) — 내부에 % 라벨
+        pie_chart = (
+            alt.Chart(dept_counts)
+            .mark_arc(innerRadius=60)
+            .encode(
+                theta="건수:Q",
+                color=alt.Color("부서:N", scale=color_scale, legend=alt.Legend(title="부서")),
+                tooltip=[
+                    alt.Tooltip("부서:N", title="부서"),
+                    alt.Tooltip("건수:Q", title="건수"),
+                    alt.Tooltip("비율:Q", format=".1%", title="비율")
+                ],
+            )
+            .properties(width=360, height=360, title="부서별 민원 비율")
         )
-        .properties(width=360, height=360, title="부서별 민원 비율")
-    )
 
-    # ✅ 각 부서 조각 위에 % 라벨 표시
-    pie_text = (
-        alt.Chart(dept_counts)
-        .mark_text(size=12, fontWeight="bold", color="white")  # 흰색 글씨
-        .encode(
-            theta="건수:Q",
-            text=alt.Text("비율:Q", format=".1%"),
+        # ✅ 각 부서 조각 위에 % 라벨 표시
+        pie_text = (
+            alt.Chart(dept_counts)
+            .mark_text(size=12, fontWeight="bold", color="white")  # 흰색 글씨
+            .encode(
+                theta="건수:Q",
+                text=alt.Text("비율:Q", format=".1%"),
+            )
         )
-    )
 
-    # 나란히 출력
-    st.altair_chart((bar_chart + bar_text) | (pie_chart + pie_text), use_container_width=False)
+        # 나란히 출력
+        st.altair_chart((bar_chart + bar_text) | (pie_chart + pie_text), use_container_width=False)
 
 
     else:
