@@ -439,6 +439,7 @@ with a2:
                     legend=alt.Legend(
                         title="부서 (비율)",
                         orient="bottom",
+                        direction="vertical"
                         labelFontSize=12,
                         titleFontSize=12,
                         symbolSize=200,
