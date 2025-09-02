@@ -1,97 +1,84 @@
-#!/usr/bin/env python
-# coding: utf-8
-
-# In[ ]:
-
-
 # utils/voice.py
-from __future__ import annotations
-from typing import Optional, Tuple, Sequence
-import os, json
+import io
+import json
+import time
+from typing import Optional, Tuple
 
-from streamlit_mic_recorder import mic_recorder
+import streamlit as st
+from pydub import AudioSegment
 
-from google.cloud import speech
 from google.oauth2 import service_account
+from google.cloud import speech_v1p1beta1 as speech
 
-# Optional hard-coded fallback (leave "" if you don't want a hard-coded path)
-SERVICE_ACCOUNT_PATH = r"C:\Users\user\Downloads\kds-hackathon-e9a639a38935.json"
-
-
-def _load_credentials() -> Optional[service_account.Credentials]:
+# ---------- record (UI) ----------
+def record_voice(just_once: bool = True):
     """
-    Build credentials in the safest order, without using st.secrets:
-      1) GCP_SERVICE_ACCOUNT_JSON env (JSON string)
-      2) GOOGLE_APPLICATION_CREDENTIALS env (path to JSON file)
-      3) SERVICE_ACCOUNT_PATH (hard-coded fallback, if provided & exists)
-      4) None -> let google library use ADC (Application Default Credentials)
+    Simple recorder using streamlit-mic-recorder if available.
+    Returns (wav_bytes, sample_rate) or None.
     """
-    # 1) JSON string in env (useful for CI or when no file path available)
-    info_json = os.getenv("GCP_SERVICE_ACCOUNT_JSON")
-    if info_json:
-        try:
-            info = json.loads(info_json)
-            return service_account.Credentials.from_service_account_info(info)
-        except Exception:
-            pass  # fall through
+    try:
+        from streamlit_mic_recorder import mic_recorder
+    except Exception:
+        st.info("음성 녹음을 사용할 수 없습니다. (streamlit-mic-recorder 미설치)")
+        return None
 
-    # 2) Path from env
-    path = os.getenv("GOOGLE_APPLICATION_CREDENTIALS")
-    if path and os.path.exists(path):
-        try:
-            return service_account.Credentials.from_service_account_file(path)
-        except Exception:
-            pass
-
-    # 3) Hard-coded fallback (optional)
-    if SERVICE_ACCOUNT_PATH and os.path.exists(SERVICE_ACCOUNT_PATH):
-        try:
-            return service_account.Credentials.from_service_account_file(SERVICE_ACCOUNT_PATH)
-        except Exception:
-            pass
-
-    # 4) None -> let SpeechClient() pick up ADC if available
-    return None
-
-
-def _speech_client() -> speech.SpeechClient:
-    creds = _load_credentials()
-    if creds is not None:
-        return speech.SpeechClient(credentials=creds)
-    return speech.SpeechClient()
-
-
-def record_voice(just_once: bool = True) -> Optional[Tuple[bytes, int]]:
-    audio = mic_recorder(
+    # show recorder widget
+    rec = mic_recorder(
         start_prompt="녹음 시작",
-        stop_prompt="녹음 종료",
+        stop_prompt="녹음 중지",
         just_once=just_once,
-        format="wav",   # LINEAR16 PCM wrapped in WAV (what Google expects)
-        key="voice_recorder",
+        format="webm",   # browser-friendly
+        key="mic_recorder",
     )
-    if audio and audio.get("bytes"):
-        return audio["bytes"], int(audio.get("sample_rate", 16000))
-    return None
+    if not rec or not rec.get("bytes"):
+        return None
+
+    webm_bytes = rec["bytes"]
+
+    # Convert WEBM -> WAV (mono/16k) using pydub/ffmpeg
+    audio = AudioSegment.from_file(io.BytesIO(webm_bytes), format="webm")
+    audio = audio.set_frame_rate(16000).set_channels(1).set_sample_width(2)
+    buf = io.BytesIO()
+    audio.export(buf, format="wav")
+    wav_bytes = buf.getvalue()
+    return wav_bytes, 16000
 
 
-def transcribe_google(
-    wav_bytes: bytes,
-    sample_rate: int,
-    language_code: str = "ko-KR",
-    alt_langs: Sequence[str] = ("en-US",),
-) -> str:
-    client = _speech_client()
-    audio = speech.RecognitionAudio(content=wav_bytes)
+# ---------- google STT ----------
+def _make_speech_client():
+    # Build credentials from Secrets (no file path!)
+    try:
+        info = st.secrets["GCP_SERVICE_ACCOUNT"]
+        if isinstance(info, str):
+            info = json.loads(info)
+        creds = service_account.Credentials.from_service_account_info(info)
+        return speech.SpeechClient(credentials=creds)
+    except Exception as e:
+        # Surface a clear error (don’t hang silently)
+        raise RuntimeError(f"GCP 자격 증명 로드 실패: {e}")
+
+def transcribe_google(wav_bytes: bytes, sample_rate: int, language_code="ko-KR", phrase_hints=None, timeout_sec: int = 60) -> str:
+    """
+    Send PCM16 mono WAV bytes to Google STT with a finite timeout.
+    Returns transcript string ('' if nothing).
+    """
+    client = _make_speech_client()
+
     config = speech.RecognitionConfig(
+        language_code=language_code,
         encoding=speech.RecognitionConfig.AudioEncoding.LINEAR16,
         sample_rate_hertz=sample_rate,
-        language_code=language_code,
-        alternative_language_codes=list(alt_langs),
+        model="latest_long",  # or "default"
         enable_automatic_punctuation=True,
-        use_enhanced=True,
-        model="default",
+        speech_contexts=[speech.SpeechContext(phrases=phrase_hints or [])],
     )
-    resp = client.recognize(config=config, audio=audio)
-    parts = [r.alternatives[0].transcript for r in resp.results if r.alternatives]
-    return " ".join(parts).strip()
+    audio = speech.RecognitionAudio(content=wav_bytes)
 
+    # Hard timeout so UI won’t spin forever
+    resp = client.recognize(config=config, audio=audio, timeout=timeout_sec)
+
+    pieces = []
+    for r in resp.results:
+        if r.alternatives:
+            pieces.append(r.alternatives[0].transcript.strip())
+    return " ".join([p for p in pieces if p]).strip()
