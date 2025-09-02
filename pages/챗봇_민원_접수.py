@@ -153,6 +153,16 @@ if VOICE_ON and st.session_state.get("step_idx") is not None:
 # ---------------- Chat input ----------------
 msg = st.chat_input("메시지를 입력하세요…")
 
+# Ensure session state is initialized safely
+if "step_idx" not in st.session_state:
+    st.session_state.step_idx = 0
+if "answers" not in st.session_state:
+    st.session_state.answers = {}
+
+# Prevent index error before accessing STEPS
+if st.session_state.step_idx >= len(STEPS):
+    st.session_state.step_idx = len(STEPS) - 1  # Clamp to last valid index
+
 if msg:
     user_say(msg)
     step = STEPS[st.session_state.step_idx]
@@ -180,7 +190,7 @@ if msg:
         else:
             # save and route as you already do
             try:
-                cap = st.session_state.voice
+                cap = st.session_state.get("voice", None)
                 기타 = {"voice": {"gs_uri": cap.gs_uri, "duration_sec": cap.duration_sec}} if cap else None
 
                 민원번호 = 민원_등록(
@@ -193,7 +203,7 @@ if msg:
                     기타=기타,
                 )
 
-                # NOTE: use chat_history (not history)
+                #  Clear everything after submission
                 for k in ("answers", "chat_history", "step_idx", "submitted", "voice"):
                     st.session_state.pop(k, None)
 
@@ -202,7 +212,6 @@ if msg:
             except Exception as e:
                 bot_say(f"죄송합니다. 접수 중 오류가 발생했습니다: {e}")
 
-    # keep the chat loop moving
-    if st.session_state.get("step_idx", 0) < len(STEPS):
-        st.rerun()
-
+# Keep chat loop going safely
+if st.session_state.get("step_idx", 0) < len(STEPS):
+    st.rerun()
