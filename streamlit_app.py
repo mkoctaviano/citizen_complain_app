@@ -122,7 +122,7 @@ st.markdown(
 
 st.markdown('<div class="k-card">', unsafe_allow_html=True)
 st.markdown(
-    '<div class="k-hero"><h1>민원 접수를 원하시면 왼쪽 아래 [접수 화면으로 이동] 버튼을 눌러주세요.</h1>'
+    '<div class="k-hero"><h1>민원 접수를 원하시면 왼쪽 아래 "접수 화면으로 이동" 버튼을 눌러주세요.</h1>'
     '<p>소중한 의견을 보내주셔서 감사합니다.</p></div>',
     unsafe_allow_html=True,
 )
