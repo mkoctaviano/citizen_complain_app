@@ -100,7 +100,7 @@ for m in st.session_state.chat_history:
         st.write(m["content"])
 
 # ---------------- Voice input (content step only) ----------------
-VOICE_ON = os.getenv("ENABLE_VOICE", "1") == "1"
+VOICE_ON = False
 
 if VOICE_ON and st.session_state.get("step_idx") == CONTENT_STEP_IDX:
     with st.expander("🎤 음성으로 내용 입력 (선택)"):
