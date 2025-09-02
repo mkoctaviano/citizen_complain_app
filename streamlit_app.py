@@ -129,7 +129,7 @@ with c1:
     st.markdown("### 민원접수")
     st.write("• 챗봇 • 음성 녹음 • 접수 확인 안내")
     st.markdown('<div class="k-btn-primary">', unsafe_allow_html=True)
-    if st.button("시민 화면으로 이동", use_container_width=True):
+    if st.button("접수 화면으로 이동", use_container_width=True):
         st.session_state["role"] = "citizen"
         _goto("pages/챗봇_민원_접수.py")
     st.markdown('</div></div>', unsafe_allow_html=True)
@@ -149,5 +149,5 @@ with c2:
     st.markdown('</div></div>', unsafe_allow_html=True)
 
 st.markdown('</div>', unsafe_allow_html=True)
-st.caption("OFFICER_PASS는 .env에서 설정하세요.")
+st.caption("민심청")
 
