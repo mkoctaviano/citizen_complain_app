@@ -1,16 +1,17 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# pages/챗봇_민원_접수.py
+import sys
+from pathlib import Path
+sys.path.append(str(Path(__file__).resolve().parent.parent))
+
 import os
 import re
 import time
-from pathlib import Path
 
 import streamlit as st
 import utils.env  # ensures .env is loaded
-from utils.voice import record_voice, transcribe_google  # or long_transcribe_google
-
+from utils.voice import record_voice, transcribe_google
 from utils.ui import hide_multipage_nav_css
 from storage import init_db, 민원_등록
 
