@@ -102,11 +102,10 @@ for m in st.session_state.chat_history:
         st.write(m["content"])
 
 # ---------------- Voice input (content step only) ----------------
-from utils.voice import record_voice
-from utils.speech_to_text import transcribe_google
+from utils.voice import record_voice, transcribe_google
 
-VOICE_ON = True  # ✅ Turn this on to activate the voice block
-CONTENT_STEP_IDX = 3  # ✅ Or whatever index corresponds to 'content' in your STEPS list
+VOICE_ON = True
+CONTENT_STEP_IDX = 3  # or your actual step index for "content"
 
 if VOICE_ON and st.session_state.get("step_idx") == CONTENT_STEP_IDX:
     with st.expander("🎤 음성으로 내용 입력 (선택)"):
@@ -140,10 +139,9 @@ if VOICE_ON and st.session_state.get("step_idx") == CONTENT_STEP_IDX:
                     if st.session_state.step_idx < len(STEPS):
                         bot_say(STEPS[st.session_state.step_idx]["prompt"])
                     else:
-                        # 최종 저장 로직은 아래 공통 블록에서 처리됨
-                        pass
-
+                        pass  # Final save block runs afterward
                     st.rerun()
+
 
 
 
