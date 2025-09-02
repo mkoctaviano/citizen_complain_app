@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
+
 import sys
 from pathlib import Path
 sys.path.append(str(Path(__file__).resolve().parent.parent))
@@ -26,7 +27,7 @@ hide_multipage_nav_css()
 
 # ---------------- Home 버튼 ----------------
 if st.button("🏠 홈으로"):
-    st.switch_page("streamlit_app.py")
+    st.switch_page("main/streamlit_app.py")
     st.stop()  # 이후 코드 실행 방지
 
 st.title("민원 접수")
@@ -189,7 +190,7 @@ if msg:
                 st.session_state["last_ticket_no"] = 민원번호
                 st.session_state["submitted"] = True
 
-                st.switch_page("pages/complaint_submitted.py")
+                st.switch_page("main/pages/complaint_submitted.py")
                 st.stop()  # ✅ 전환 후 즉시 중단
 
             except Exception as e:
