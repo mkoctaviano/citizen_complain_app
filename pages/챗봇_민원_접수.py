@@ -24,6 +24,52 @@ st.set_page_config(
 )
 hide_multipage_nav_css()
 
+st.markdown(
+    """
+    <style>
+    /* Outer outline for the whole conversation */
+    [data-testid="stChatMessageContainer"] {
+        border: 2px solid #D8E3F6;
+        border-radius: 16px;
+        padding: 16px;
+        background: #fff;
+        max-height: 70vh;
+        overflow-y: auto;
+    }
+
+    /* Style individual bubbles */
+    [data-testid="stChatMessage"] [data-testid="stChatMessageContent"] {
+        border: 1px solid #D8E3F6;
+        border-radius: 14px;
+        padding: 12px 14px;
+        background: #F7FAFF;  /* light background */
+    }
+
+    /* Space between messages */
+    [data-testid="stChatMessage"] {
+        margin: 10px 0;
+    }
+
+    /* Assistant vs. User different bubble colors (optional) */
+    [data-testid="stChatMessage"][data-testid="assistant"] [data-testid="stChatMessageContent"] {
+        background: #E9F2FF;   /* bluish for assistant */
+    }
+    [data-testid="stChatMessage"][data-testid="user"] [data-testid="stChatMessageContent"] {
+        background: #F6F6F6;   /* gray for user */
+    }
+
+    /* Avatar adjustments */
+    [data-testid="stChatMessageAvatar"] img {
+        width: 28px;
+        height: 28px;
+        border-radius: 50%;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
+
+
 # ---------------- Session state init ----------------
 if "chat_history" not in st.session_state:
     st.session_state.chat_history = []
