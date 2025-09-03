@@ -26,46 +26,91 @@ hide_multipage_nav_css()
 
 st.markdown("""
 <style>
-/* --- Outer outline (grows naturally, no inner scroll) --- */
+/* Outer outline */
 div[data-testid="stVerticalBlockBorderWrapper"]{
-  border:2px solid #D8E3F6!important; border-radius:16px!important;
-  padding:16px!important; background:#fff!important; box-shadow:0 4px 14px rgba(11,47,89,.06);
-  margin-top:8px; height:auto!important; overflow:visible!important;
+  border:2px solid #D8E3F6!important;
+  border-radius:16px!important;
+  padding:16px!important;
+  background:#fff!important;
+  box-shadow:0 4px 14px rgba(11,47,89,.06);
+  margin-top:8px;
+  height:auto!important;
+  overflow:visible!important;
 }
 
-/* Kill default bubble so only our .bubble styles apply */
+/* Reset Streamlit's own chat message content */
 [data-testid="stChatMessage"] [data-testid="stChatMessageContent"]{
-  background:transparent!important; border:none!important; padding:0!important;
+  background:transparent!important;
+  border:none!important;
+  padding:0!important;
 }
 
-/* Base message row spacing */
-[data-testid="stChatMessage"]{ gap:8px!important; margin:8px 0!important; align-items:flex-end; }
+/* Bubble wrapper */
+.bubble{
+  display:inline-block;
+  max-width:70%;
+  border-radius:12px;
+  padding:8px 12px;
+  margin:2px 0;
+  line-height:1.45;
+}
 
-/* Put bubble only around the text */
-.bubble{ display:inline-block; max-width:70%; border-radius:12px; padding:8px 12px; line-height:1.45; }
-
-/* Colors */
-.bubble.assistant{ background:#E9F2FF; color:#111; }   /* light blue */
-.bubble.user{ background:#0B2F59; color:#fff; }        /* brand blue */
-
-/* Align by role (flip avatar for user) */
+/* Assistant (left, light blue) */
 [data-testid="stChatMessage"]:has(.bubble.assistant){
   flex-direction:row!important; justify-content:flex-start!important;
 }
+/* Assistant bubble (left, light blue with shadow) */
+.bubble.assistant {
+  background: #E9F2FF;
+  color: #111;
+  border-radius: 12px;
+  padding: 8px 12px;
+  margin: 2px 0;
+  display: inline-block;
+  max-width: 70%;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+}
+
+/* User (right, brand blue) */
 [data-testid="stChatMessage"]:has(.bubble.user){
   flex-direction:row-reverse!important; justify-content:flex-end!important;
 }
-
-/* Input bar visually docked */
-section[data-testid="stChatInput"]{
-  border-top:1px solid #D8E3F6; margin-top:-10px; padding:12px;
-  border-radius:0 0 16px 16px; background:#fff; max-width:100%;
+/* User bubble (right, brand blue with shadow) */
+.bubble.user {
+  background: #0B2F59;
+  color: #fff;
+  border-radius: 12px;
+  padding: 8px 12px;
+  margin: 2px 0;
+  display: inline-block;
+  max-width: 70%;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
 }
 
-/* (Optional) avatar size */
-[data-testid="stChatMessageAvatar"] img{ width:32px; height:32px; border-radius:50%; }
+/* Layout tweaks */
+[data-testid="stChatMessage"]{
+  gap:6px!important;
+  margin:6px 0!important;
+  align-items:flex-end;
+}
+
+/* Avatar size */
+[data-testid="stChatMessageAvatar"] img{
+  width:32px; height:32px; border-radius:50%;
+}
+
+/* Input docked */
+section[data-testid="stChatInput"]{
+  border-top:1px solid #D8E3F6;
+  margin-top:-10px;
+  padding:12px;
+  border-radius:0 0 16px 16px;
+  background:#fff;
+  max-width:100%;
+}
 </style>
 """, unsafe_allow_html=True)
+
 
 
 
@@ -138,14 +183,15 @@ if not st.session_state.chat_history:
 from html import escape
 
 # ---------------- Render chat history ----------------
-chat_box = st.container(border=True)  # keep your outer outline container
+from html import escape
+
+chat_box = st.container(border=True)
 with chat_box:
     for m in st.session_state.chat_history:
         role = "assistant" if m["role"] == "assistant" else "user"
-        with st.chat_message(role):  # add avatar=... here if you want
-            # bubble only around TEXT (not avatar)
-            safe = escape(m["content"]).replace("\n", "<br>")
-            st.markdown(f'<div class="bubble {role}">{safe}</div>', unsafe_allow_html=True)
+        with st.chat_message(role):
+            text = escape(m["content"]).replace("\n", "<br>")
+            st.markdown(f'<div class="bubble {role}">{text}</div>', unsafe_allow_html=True)
 
 
 # ---------------- Voice input (content step only) ----------------
