@@ -228,6 +228,7 @@
 
 #!/usr/bin/env python
 # coding: utf-8
+# ---- inference_wrapper.py (top of file) ----
 from pathlib import Path
 import os
 
@@ -235,74 +236,34 @@ import streamlit as st
 from google.cloud import storage
 from google.oauth2 import service_account
 
-# -----------------------------
-# 0) Config
-# -----------------------------
-MODELS_BUCKET = st.secrets["GCS_BUCKET_MODELS"]
-GCP_PROJECT   = st.secrets["GCP_PROJECT"]
-GCP_SA        = st.secrets["gcp_sa"]
-KEI_LOCAL     = Path(st.secrets.get("KEI_BOOSTER_PATH", "/tmp/kei_booster.pkl"))
-MAIN_MODEL_PREFIX = "main_model/"
-FALLBACK_URL  = st.secrets.get("KEI_BOOSTER_URL")  # optional
+BUCKET_NAME = "kds-hackathon-models"              # <- your bucket
+BLOB_NAME   = "kei_booster.pkl"                   # <- at bucket root
+DEST_PATH   = Path("/tmp/kei_booster.pkl")        # where model_core expects it
 
-# -----------------------------
-# 1) GCS client (cache ok)
-# -----------------------------
-@st.cache_resource(show_spinner="Auth GCS…")
 def _gcs_client():
-    creds = service_account.Credentials.from_service_account_info(GCP_SA)
-    return storage.Client(credentials=creds, project=GCP_PROJECT)
+    # requires st.secrets["gcp_sa"] and st.secrets["GCP_PROJECT"]
+    creds = service_account.Credentials.from_service_account_info(st.secrets["gcp_sa"])
+    return storage.Client(credentials=creds, project=st.secrets["GCP_PROJECT"])
 
-def _download_blob_to(local_path: Path, bucket_name: str, blob_name: str) -> None:
+def _download_kei():
+    if DEST_PATH.exists() and DEST_PATH.stat().st_size > 0:
+        return
     client = _gcs_client()
-    bucket = client.bucket(bucket_name)
-    blob = bucket.blob(blob_name)
-    local_path.parent.mkdir(parents=True, exist_ok=True)
-    blob.download_to_filename(str(local_path))
+    bucket = client.bucket(BUCKET_NAME)
+    blob = bucket.blob(BLOB_NAME)
+    DEST_PATH.parent.mkdir(parents=True, exist_ok=True)
+    blob.download_to_filename(str(DEST_PATH))
+    # sanity check
+    if not DEST_PATH.exists() or DEST_PATH.stat().st_size == 0:
+        raise FileNotFoundError(f"Downloaded file is missing/empty at {DEST_PATH}")
 
-# -----------------------------
-# 2) Ensure KEI booster (NO cache)
-# -----------------------------
-def ensure_kei_booster() -> str:
-    # If already present & non-empty, done.
-    if KEI_LOCAL.exists() and KEI_LOCAL.stat().st_size > 0:
-        return str(KEI_LOCAL)
+# 1) Download BEFORE importing model_core
+_download_kei()
+os.environ["KEI_BOOSTER_PATH"] = str(DEST_PATH)
 
-    tried = []
-
-    # Try common blob names first
-    blob_candidates = [
-        "kei_booster.pkl",
-        "models/kei_booster.pkl",
-        "kei/kei_booster.pkl",
-        "main_model/kei_booster.pkl",
-    ]
-    for blob_name in blob_candidates:
-        try:
-            _download_blob_to(KEI_LOCAL, MODELS_BUCKET, blob_name)
-            if KEI_LOCAL.exists() and KEI_LOCAL.stat().st_size > 0:
-                st.write(f"✅ Downloaded KEI from gs://{MODELS_BUCKET}/{blob_name}")
-                return str(KEI_LOCAL)
-        except Exception as e:
-            tried.append(f"gs://{MODELS_BUCKET}/{blob_name}: {e}")
-
-    # Fallback: direct URL if provided
-    if FALLBACK_URL:
-        try:
-            import requests
-            r = requests.get(FALLBACK_URL, timeout=60)
-            r.raise_for_status()
-            KEI_LOCAL.parent.mkdir(parents=True, exist_ok=True)
-            KEI_LOCAL.write_bytes(r.content)
-            if KEI_LOCAL.stat().st_size > 0:
-                st.write("✅ Downloaded KEI from fallback URL")
-                return str(KEI_LOCAL)
-        except Exception as e:
-            tried.append(f"URL {FALLBACK_URL}: {e}")
-
-    # If we got here, nothing worked
-    st.error("❌ Could not fetch KEI booster. Tried:\n" + "\n".join(tried))
-    raise FileNotFoundError("KEI booster not found from GCS or URL")
+# 2) Now import model_core and (optionally) pin its path
+import citizen_complain_app.model_core as mc
+mc.KEI_PKL = DEST_PATH  # belt & suspenders
 
 # -----------------------------
 # 3) Ensure main_model (cache ok)
