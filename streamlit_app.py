@@ -188,9 +188,9 @@ with c2:
             else:
                 st.error("비밀번호가 올바르지 않습니다.")
 import os
-import streamlit as st
 from pathlib import Path
-from citizen_complain_app import model_core
+import streamlit as st
 
-print("KEI_BOOSTER_PATH:", os.getenv("KEI_BOOSTER_PATH"))
-print("Exists?", Path(os.getenv("KEI_BOOSTER_PATH")).exists())
+path = os.getenv("KEI_BOOSTER_PATH", "/tmp/kei_booster.pkl")
+st.write("KEI_BOOSTER_PATH:", path)
+st.write("Exists?", Path(path).exists())
