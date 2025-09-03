@@ -69,7 +69,24 @@ st.markdown("""
 
 /* Avatar size */
 [data-testid="stChatMessageAvatar"] img{ width:32px; height:32px; border-radius:50%; }
-
+/* ✅ 여기 추가 */
+[data-testid="stChatMessage"]{
+  display: flex !important;
+}
+[data-testid="stChatMessage"]:has(.bubble.user) [data-testid="stChatMessageContent"]{
+  display: flex !important;
+  justify-content: flex-end !important;
+  width: 100% !important;
+}
+[data-testid="stChatMessage"]:has(.bubble.assistant) [data-testid="stChatMessageContent"]{
+  display: flex !important;
+  justify-content: flex-start !important;
+}
+.bubble.user{
+  margin-left: auto !important;
+}
+</style>
+""", unsafe_allow_html=True)
 /* Input docked to the chat window */
 section[data-testid="stChatInput"]{
   border-top:1px solid #D8E3F6; margin-top:-10px; padding:12px;
