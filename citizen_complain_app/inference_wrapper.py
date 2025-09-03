@@ -1,12 +1,16 @@
 #!/usr/bin/env python
 # coding: utf-8
 
+from __future__ import annotations
+
+import os, json, time
 from pathlib import Path
-import os
-from typing import List, Optional
+from typing import List, Optional, Dict
 from collections import Counter
 
-# Streamlit is optional (worker won't have it)
+# --------------------------------
+# Optional Streamlit compatibility
+# --------------------------------
 try:
     import streamlit as st
     HAS_ST = True
@@ -17,10 +21,11 @@ from google.cloud import storage
 from google.oauth2 import service_account
 
 
-# -----------------------------
-# Secrets / env helpers
-# -----------------------------
+# =============================
+# Secrets / env helper functions
+# =============================
 def _get_secret(key: str, default=None):
+    """st.secrets first (if available), else env var."""
     if HAS_ST:
         val = st.secrets.get(key, None)
         if val is not None:
@@ -29,71 +34,115 @@ def _get_secret(key: str, default=None):
 
 
 def _gcs_client():
-    # Prefer st.secrets["gcp_sa"], else env var GCP_SA_JSON, else ADC
+    """
+    Prefer st.secrets["gcp_sa"], else env var GCP_SA_JSON, else ADC.
+    Works both on Streamlit Cloud and local.
+    """
     sa_info = None
     if HAS_ST and "gcp_sa" in st.secrets:
         sa_info = dict(st.secrets["gcp_sa"])
     elif os.getenv("GCP_SA_JSON"):
-        import json
         sa_info = json.loads(os.environ["GCP_SA_JSON"])
 
     project = _get_secret("GCP_PROJECT")
     if sa_info:
         creds = service_account.Credentials.from_service_account_info(sa_info)
         return storage.Client(credentials=creds, project=project)
-    # Fallback: ADC (only works if the environment provides it)
+    # Fallback: Application Default Credentials
     return storage.Client(project=project)
 
 
-def _download_blob(bucket: str, blob: str, dest: Path):
+# =============================
+# Local FS helpers / idempotency
+# =============================
+def _exists_nonempty(p: Path) -> bool:
+    try:
+        return p.exists() and p.stat().st_size > 0
+    except Exception:
+        return False
+
+
+def _download_blob(bucket: str, blob: str, dest: Path, max_retries: int = 3):
     client = _gcs_client()
     b = client.bucket(bucket).blob(blob)
     dest.parent.mkdir(parents=True, exist_ok=True)
-    b.download_to_filename(str(dest))
+
+    for attempt in range(max_retries):
+        try:
+            b.download_to_filename(str(dest))
+            if _exists_nonempty(dest):
+                return
+        except Exception:
+            time.sleep(0.8 * (attempt + 1))
+    raise FileNotFoundError(f"Failed to fetch gs://{bucket}/{blob} -> {dest}")
 
 
-def _download_prefix(bucket: str, prefix: str, root: Path) -> List[str]:
+def _download_prefix_if_missing(bucket: str, prefix: str, root: Path) -> List[str]:
+    """
+    Download *only if* the target folder looks empty. Returns list of files downloaded.
+    Layout: <root>/<prefix>/<relative_files>
+    """
+    target_root = root / prefix.strip("/")
+    # quick sentinel: if any config.json under this prefix exists locally, skip listing/downloading
+    sentinel = list(target_root.rglob("config.json"))
+    if sentinel:
+        return []  # assume folder already present
+
     client = _gcs_client()
-    b = client.bucket(bucket)
+    bucket_obj = client.bucket(bucket)
+
     files = []
-    for bl in b.list_blobs(prefix=prefix):
+    for bl in bucket_obj.list_blobs(prefix=prefix):
         if bl.name.endswith("/"):
             continue
         rel = bl.name[len(prefix):].lstrip("/")
-        local = root / prefix.strip("/") / rel
+        local = target_root / rel
         local.parent.mkdir(parents=True, exist_ok=True)
         bl.download_to_filename(str(local))
         files.append(str(local))
     return files
 
 
-# -----------------------------
-# Bootstrap: download models to /tmp and set envs
-# -----------------------------
-def bootstrap_models():
+# =============================
+# Bootstrap: resolve models
+# =============================
+def bootstrap_models() -> Dict[str, Path]:
     """
-    Download all required artifacts to /tmp and set envs.
-    Safe to call from Streamlit OR a background worker.
-    """
-    bucket = _get_secret("GCS_BUCKET_MODELS")  # e.g., "kds-hackathon-models"
-    if not bucket:
-        raise RuntimeError("Missing GCS_BUCKET_MODELS (secrets or env).")
+    Resolve runtime artifacts. Preference order:
+    1) Use LOCAL dirs if already set via env (and exist).
+    2) Else use /tmp and optionally download missing parts from GCS (if bucket is configured).
 
+    Expects GCS layout:
+      main_model/
+      child_models/
+      priority_model/
+      retriever_bert/
+      cause_tagger/
+      kei_booster.pkl   (file)
+    """
+    # Allow caller to fully short-circuit by setting these envs to local paths
     base_tmp = Path("/tmp")
 
-    # 1) KEI booster
+    # ----- KEI booster (single file) -----
     kei_dest = Path(_get_secret("KEI_BOOSTER_PATH", str(base_tmp / "kei_booster.pkl")))
-    if not (kei_dest.exists() and kei_dest.stat().st_size > 0):
+    if not _exists_nonempty(kei_dest):
+        bucket = _get_secret("GCS_BUCKET_MODELS", "")
+        if not bucket:
+            raise RuntimeError("Missing KEI booster locally and no GCS_BUCKET_MODELS provided.")
         _download_blob(bucket, "kei_booster.pkl", kei_dest)
-    if not kei_dest.exists() or kei_dest.stat().st_size == 0:
-        raise FileNotFoundError(f"Failed to fetch gs://{bucket}/kei_booster.pkl")
     os.environ["KEI_BOOSTER_PATH"] = str(kei_dest)
 
-    # 2) Model folders
-    for prefix in ["main_model/", "child_models/", "priority_model/", "retriever_bert/", "cause_tagger/"]:
-        _download_prefix(bucket, prefix, base_tmp)
+    # ----- Model folders: only download if missing -----
+    bucket = _get_secret("GCS_BUCKET_MODELS", "")  # optional (if local already present)
+    prefixes = ["main_model/", "child_models/", "priority_model/", "retriever_bert/", "cause_tagger/"]
+    for pfx in prefixes:
+        tgt = base_tmp / pfx.strip("/")
+        # If caller already mounted or set local paths with contents, we respect them via envs below.
+        # Otherwise, place (or ensure) under /tmp.
+        if not any(tgt.rglob("config.json")) and bucket:
+            _download_prefix_if_missing(bucket, pfx, base_tmp)
 
-    # 3) Tell model_core where to look (envs)
+    # ----- Tell model_core where to look (set defaults if not provided) -----
     os.environ.setdefault("MAIN_MODEL_DIR", str(base_tmp / "main_model"))
     os.environ.setdefault("CHILD_MODEL_DIR", str(base_tmp / "child_models"))
     os.environ.setdefault("CHILD_REG_PATH",  str(base_tmp / "child_models" / "child_registry.json"))
@@ -113,27 +162,31 @@ KEI_DEST = _paths["kei_path"]
 # Now import model_core; it reads KEI_BOOSTER_PATH and dirs from env
 import citizen_complain_app.model_core as mc
 
-# Belt & suspenders: force the resolved paths
-try:
-    mc.KEI_PKL = KEI_DEST
-except Exception:
-    pass
-try:
-    mc.BASE_DIR     = BASE_TMP
-    mc.PARENT_DIR   = mc.BASE_DIR / "main_model"
-    mc.CHILD_DIR    = mc.BASE_DIR / "child_models"
-    mc.CAUSE_DIR    = mc.BASE_DIR / "cause_tagger"
-    mc.PRIORITY_DIR = mc.BASE_DIR / "priority_model"
-    mc.RETR_DIR     = mc.BASE_DIR / "retriever_bert"
-    mc.RETR_INDEX   = mc.BASE_DIR / "retriever_bert"
-except Exception:
-    pass
+# Belt & suspenders: force the resolved paths (don’t crash if attributes missing)
+for name, value in {
+    "KEI_PKL": KEI_DEST,
+    "BASE_DIR": BASE_TMP,
+    "PARENT_DIR": BASE_TMP / "main_model",
+    "CHILD_DIR": BASE_TMP / "child_models",
+    "CAUSE_DIR": BASE_TMP / "cause_tagger",
+    "PRIORITY_DIR": BASE_TMP / "priority_model",
+    "RETR_DIR": BASE_TMP / "retriever_bert",
+    "RETR_INDEX": BASE_TMP / "retriever_bert",
+}.items():
+    try:
+        setattr(mc, name, value)
+    except Exception:
+        pass
 
 
-# -----------------------------
-# Public API
-# -----------------------------
+# =============================
+# Public API (thin passthroughs)
+# =============================
 def run_full_inference(text: str, k_sim: int = 5):
+    """
+    Primary entrypoint used by Streamlit page(s).
+    Calls mc.run_full_inference (which handles parent→child→priority→cause→retriever).
+    """
     return mc.run_full_inference(text, k_sim=k_sim)
 
 
@@ -153,6 +206,7 @@ def _urgency_label_from_norm(urg_norm: Optional[float]) -> str:
 
 
 def _kw_vote_reasons(keywords: List[str]) -> List[str]:
+    """Optional: surface ambiguous KEI vote as a reason for 공통확인."""
     reasons: List[str] = []
     try:
         csv_path = getattr(mc, "CSV_PATH", None)
@@ -174,6 +228,10 @@ def _kw_vote_reasons(keywords: List[str]) -> List[str]:
 
 
 def run_full_inference_legacy(text: str, k_sim: int = 5):
+    """
+    Legacy formatter that keeps the older output shape
+    while using mc.run_full_inference under the hood.
+    """
     out_v2 = mc.run_full_inference(text, k_sim=k_sim)
 
     keywords   = out_v2.get("keywords") or []
