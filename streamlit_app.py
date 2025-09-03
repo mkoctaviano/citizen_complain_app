@@ -168,9 +168,17 @@ with c2:
         unsafe_allow_html=True,
     )
 
-st.markdown('</div>', unsafe_allow_html=True)
-st.caption("민심청")
+    # keep the password, just without "접속"
+    pw = st.text_input("비밀번호", type="password", key="off_pw")
 
-import streamlit as st
+    st.markdown('<div class="k-btn-secondary">', unsafe_allow_html=True)
+    if st.button("담당자 화면으로 이동", use_container_width=True):
+        if pw == OFFICER_PASS:
+            st.session_state["role"] = "officer"
+            _goto("pages/담당자_대시보드.py")
+        else:
+            st.error("비밀번호가 올바르지 않습니다.")
+    st.markdown('</div></div>', unsafe_allow_html=True)
+
 
 
