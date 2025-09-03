@@ -24,61 +24,49 @@ st.set_page_config(
 )
 hide_multipage_nav_css()
 
-st.markdown(
-    """
-    <style>
-    /* Reset Streamlit's default chat bubble look */
-    [data-testid="stChatMessage"] [data-testid="stChatMessageContent"] {
-        background: transparent !important;
-        border: none !important;
-        padding: 0 !important;
-    }
+st.markdown("""
+<style>
+/* --- Outer outline (grows naturally, no inner scroll) --- */
+div[data-testid="stVerticalBlockBorderWrapper"]{
+  border:2px solid #D8E3F6!important; border-radius:16px!important;
+  padding:16px!important; background:#fff!important; box-shadow:0 4px 14px rgba(11,47,89,.06);
+  margin-top:8px; height:auto!important; overflow:visible!important;
+}
 
-    /* === Assistant messages (left aligned, avatar left) === */
-    [data-testid="stChatMessage"][data-testid="assistant"] {
-        flex-direction: row !important;         /* avatar left, text right */
-        justify-content: flex-start !important;
-    }
-    [data-testid="stChatMessage"][data-testid="assistant"] [data-testid="stChatMessageContent"] p {
-        background: #E9F2FF;                    /* light blue */
-        border-radius: 12px;
-        padding: 8px 12px;
-        margin: 0;
-        display: inline-block;
-        max-width: 70%;
-        color: #000;                            /* dark text */
-    }
+/* Kill default bubble so only our .bubble styles apply */
+[data-testid="stChatMessage"] [data-testid="stChatMessageContent"]{
+  background:transparent!important; border:none!important; padding:0!important;
+}
 
-    /* === User messages (right aligned, avatar right) === */
-    [data-testid="stChatMessage"][data-testid="user"] {
-        flex-direction: row-reverse !important; /* avatar right, text left */
-        justify-content: flex-end !important;
-    }
-    [data-testid="stChatMessage"][data-testid="user"] [data-testid="stChatMessageContent"] p {
-        background: #0B2F59;                    /* brand blue */
-        color: #FFFFFF;                         /* white text */
-        border-radius: 12px;
-        padding: 8px 12px;
-        margin: 0;
-        display: inline-block;
-        max-width: 70%;
-    }
+/* Base message row spacing */
+[data-testid="stChatMessage"]{ gap:8px!important; margin:8px 0!important; align-items:flex-end; }
 
-    /* === General spacing === */
-    [data-testid="stChatMessage"] {
-        gap: 6px !important;   /* tighten gap between avatar and bubble */
-        margin: 6px 0 !important;
-        align-items: flex-end; /* bottom align avatars with bubbles */
-    }
+/* Put bubble only around the text */
+.bubble{ display:inline-block; max-width:70%; border-radius:12px; padding:8px 12px; line-height:1.45; }
 
-    /* === Avatar sizing === */
-    [data-testid="stChatMessageAvatar"] img {
-        width: 32px; height: 32px; border-radius: 50%;
-    }
-    </style>
-    """,
-    unsafe_allow_html=True,
-)
+/* Colors */
+.bubble.assistant{ background:#E9F2FF; color:#111; }   /* light blue */
+.bubble.user{ background:#0B2F59; color:#fff; }        /* brand blue */
+
+/* Align by role (flip avatar for user) */
+[data-testid="stChatMessage"]:has(.bubble.assistant){
+  flex-direction:row!important; justify-content:flex-start!important;
+}
+[data-testid="stChatMessage"]:has(.bubble.user){
+  flex-direction:row-reverse!important; justify-content:flex-end!important;
+}
+
+/* Input bar visually docked */
+section[data-testid="stChatInput"]{
+  border-top:1px solid #D8E3F6; margin-top:-10px; padding:12px;
+  border-radius:0 0 16px 16px; background:#fff; max-width:100%;
+}
+
+/* (Optional) avatar size */
+[data-testid="stChatMessageAvatar"] img{ width:32px; height:32px; border-radius:50%; }
+</style>
+""", unsafe_allow_html=True)
+
 
 
 # ---------------- Session state init ----------------
@@ -147,14 +135,18 @@ def user_say(msg: str):
 if not st.session_state.chat_history:
     bot_say(STEPS[0]["prompt"])
 
-# ---------------- Render chat history ----------------
-chat_box = st.container(border=True)   # this is the outlined window
+from html import escape
 
+# ---------------- Render chat history ----------------
+chat_box = st.container(border=True)  # keep your outer outline container
 with chat_box:
     for m in st.session_state.chat_history:
         role = "assistant" if m["role"] == "assistant" else "user"
-        with st.chat_message(role):
-            st.write(m["content"])
+        with st.chat_message(role):  # add avatar=... here if you want
+            # bubble only around TEXT (not avatar)
+            safe = escape(m["content"]).replace("\n", "<br>")
+            st.markdown(f'<div class="bubble {role}">{safe}</div>', unsafe_allow_html=True)
+
 
 # ---------------- Voice input (content step only) ----------------
 VOICE_ON = True
