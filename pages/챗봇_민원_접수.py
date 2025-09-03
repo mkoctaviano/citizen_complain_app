@@ -26,7 +26,7 @@ hide_multipage_nav_css()
 
 st.markdown("""
 <style>
-/* Chat window outline (scoped to the container after #conv-start) */
+/* Chat window outline (scoped only to the container after #conv-start) */
 #conv-start + div[data-testid="stVerticalBlock"] div[data-testid="stVerticalBlockBorderWrapper"]{
   border:2px solid #D8E3F6 !important;
   border-radius:16px !important;
@@ -36,53 +36,39 @@ st.markdown("""
   margin-top:8px;
 }
 
-/* Flatten Streamlit’s row/content backgrounds */
+/* Flatten Streamlit’s built-in chat backgrounds */
 [data-testid="stChatMessage"]{
   background:transparent !important; box-shadow:none !important;
-  margin:10px 0 !important; gap:6px !important; align-items:flex-end;
+  margin:8px 0 !important; gap:6px !important; align-items:flex-end;
 }
 [data-testid="stChatMessage"] [data-testid="stChatMessageContent"]{
   background:transparent !important; border:none !important; box-shadow:none !important; padding:0 !important;
 }
-
-/* 👉 KEY: make the content column shrink to the bubble, not stretch */
 [data-testid="stChatMessage"] > div:nth-child(2){
-  background:transparent !important; border:none !important; box-shadow:none !important; padding:0 !important;
-  border-radius:0 !important;
-  flex: 0 0 auto !important;       /* shrink-to-fit */
-  width: auto !important;
+  background:transparent !important; border:none !important; box-shadow:none !important; padding:0 !important; border-radius:0 !important;
 }
 
-/* Our alignment rows (no width stretching) */
-.bubble-row{ display:inline-flex; width:auto; align-items:flex-end; }
-.bubble-row.assistant{ justify-content:flex-start; }
-.bubble-row.user{ justify-content:flex-end; }
-
-/* Align rows: avatar then content; push pair to the edge */
-[data-testid="stChatMessage"]:has(.bubble-row.assistant){
-  flex-direction: row !important;            /* avatar left, bubble right */
-  justify-content: flex-start !important;
-}
-[data-testid="stChatMessage"]:has(.bubble-row.user){
-  flex-direction: row !important;            /* avatar BEFORE bubble */
-  justify-content: flex-end !important;      /* pair hugs the right edge */
-}
-
-/* Text-only bubbles (normal wrapping, no per-letter breaks) */
+/* Bubbles (text only) */
 .bubble{
   display:inline-block; max-width:70%;
   border-radius:12px; padding:8px 12px; margin:2px 0; line-height:1.45;
-  white-space: normal;           /* was pre-wrap */
-  overflow-wrap: break-word;     /* was anywhere (caused per-letter breaks) */
-  word-break: normal;
+  white-space:normal; overflow-wrap:break-word; word-break:normal;
 }
 .bubble.assistant{ background:#E9F2FF; color:#111; }
 .bubble.user{ background:#0B2F59; color:#fff; }
 
+/* Alignment: assistant left, user right (avatar ends up on the right for user) */
+[data-testid="stChatMessage"]:has(.bubble.assistant){
+  flex-direction:row !important; justify-content:flex-start !important;
+}
+[data-testid="stChatMessage"]:has(.bubble.user){
+  flex-direction:row-reverse !important; justify-content:flex-end !important;
+}
+
 /* Avatar size */
 [data-testid="stChatMessageAvatar"] img{ width:32px; height:32px; border-radius:50%; }
 
-/* Input docked */
+/* Input docked to the chat window */
 section[data-testid="stChatInput"]{
   border-top:1px solid #D8E3F6; margin-top:-10px; padding:12px;
   border-radius:0 0 16px 16px; background:#fff; max-width:100%;
@@ -163,22 +149,18 @@ if not st.session_state.chat_history:
 # ---------------- Render chat history ----------------
 from html import escape
 
-# marker so the CSS can scope the window outline
+# scope marker for the outline above
 st.markdown('<div id="conv-start"></div>', unsafe_allow_html=True)
 
 chat_box = st.container(border=True)
 with chat_box:
     for m in st.session_state.chat_history:
         role = "assistant" if m["role"] == "assistant" else "user"
-        # ✅ explicit avatars so they always show
-        avatar = "🤖" if role == "assistant" else "🙂"
+        avatar = "🤖" if role == "assistant" else "🙂"  # optional, keeps avatars visible
         with st.chat_message(role, avatar=avatar):
             text = escape(m["content"]).replace("\n", "<br>")
-            # alignment row + text-only bubble
-            st.markdown(
-                f'<div class="bubble-row {role}"><div class="bubble {role}">{text}</div></div>',
-                unsafe_allow_html=True,
-            )
+            st.markdown(f'<div class="bubble {role}">{text}</div>', unsafe_allow_html=True)
+
 
 
 # ---------------- Voice input (content step only) ----------------
