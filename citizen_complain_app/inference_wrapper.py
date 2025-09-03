@@ -266,33 +266,43 @@ def download_main_model() -> str:
 download_main_model()
 
 # -----------------------------
-# 2. Set KEI_BOOSTER_PATH from downloaded main_model
+# citizen_complain_app/inference_wrapper.py
+
 import os
+import pickle
 import requests
 
-def _find_kei_booster_path() -> str:
-    """
-    Try loading KEI booster from cloud URL (defined in secrets).
-    If not downloaded yet, fetch and save locally.
-    """
+from citizen_complain_app.model_core import run_classifier, KEIBooster
+
+# Step 1: Resolve the KEI booster path (download from GCS if needed)
+def _find_kei_booster_path():
+    booster_url = os.getenv("KEI_BOOSTER_URL")
+    local_path = os.getenv("KEI_BOOSTER_PATH", "/tmp/kei_booster.pkl")
+
+    if os.path.exists(local_path) and os.path.getsize(local_path) > 0:
+        return local_path
+
+    # Download from GCS
     try:
-        import streamlit as st
-        booster_url = st.secrets["KEI_BOOSTER_URL"]
-        local_path = st.secrets["KEI_BOOSTER_PATH"]
-    except Exception:
-        booster_url = os.getenv("KEI_BOOSTER_URL", "")
-        local_path = os.getenv("KEI_BOOSTER_PATH", "/tmp/kei_booster.pkl")
+        r = requests.get(booster_url, timeout=30)
+        r.raise_for_status()
+        with open(local_path, "wb") as f:
+            f.write(r.content)
+        return local_path
+    except Exception as e:
+        raise RuntimeError(f"Failed to fetch KEI booster from {booster_url}: {e}")
 
-    if not os.path.exists(local_path):
-        try:
-            r = requests.get(booster_url, timeout=30)
-            r.raise_for_status()
-            with open(local_path, "wb") as f:
-                f.write(r.content)
-        except Exception as e:
-            raise RuntimeError(f"Failed to download KEI Booster: {e}")
+_LOCAL_KEI = _find_kei_booster_path()
 
-    return local_path
+# Step 2: Load and run inference using the booster
+def run_full_inference(text):
+    with open(_LOCAL_KEI, "rb") as f:
+        kei_booster = pickle.load(f)
+
+    if not isinstance(kei_booster, KEIBooster):
+        raise RuntimeError("KEI booster not loaded correctly.")
+
+    return run_classifier(text, kei_booster)
 
 # -----------------------------
 # 3. Import model_core and patch its KEI_PKL
