@@ -118,35 +118,49 @@ import base64
 # ---- header ----
 hdr = st.container()
 with hdr:
-    cols = st.columns([2, 7, 3])  # ← [1,8,3] 에서 살짝 여유 주기
+    cols = st.columns([2, 7, 3])  # 비율은 그대로
 
-
+    # -------- LEFT: 민심청 (로고 + 타이틀) --------
     with cols[0]:
         if LOGO:
             with open(LOGO, "rb") as f:
                 b64_logo = base64.b64encode(f.read()).decode()
-
             st.markdown(
                 f"""
-                <div style="
-                    display:inline-flex; align-items:center; gap:16px;
-                    white-space:nowrap; flex-wrap:nowrap; overflow:visible;
-                    margin-top:20px;
-                ">
+                <div class="k-pill" style="margin-top:8px;">
                     <img src="data:image/png;base64,{b64_logo}"
-                         style="height:80px; width:auto; object-fit:contain;">
-                    <span style="font-weight:900; font-size:2.2rem; color:#0B2F59;">민심청</span>
+                         alt="logo"
+                         style="height:56px;width:auto;object-fit:contain;">
+                    <span class="k-title-main">민심청</span>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+        else:
+            st.markdown(
+                """
+                <div class="k-pill" style="margin-top:8px;">
+                    <span class="k-title-main">민심청</span>
                 </div>
                 """,
                 unsafe_allow_html=True,
             )
 
+    # -------- CENTER: (필요시 검색/안내 영역) --------
+    # with cols[1]:
+    #     st.markdown('<div class="k-pill" style="margin-top:8px;"></div>', unsafe_allow_html=True)
+
+    # -------- RIGHT: 민원 포털 --------
     with cols[2]:
         st.markdown(
-            f"""<div style="display:flex;align-items:center;justify-content:flex-end;
-                     height:46px;color:{BRAND};font-weight:700;">민원 포털</div>""",
+            """
+            <div class="k-pill k-pill-right" style="margin-top:8px;">
+                <div class="k-title-sub">민원 포털</div>
+            </div>
+            """,
             unsafe_allow_html=True,
         )
+
 
 st.markdown(
     '<div class="k-header"><div style="font-weight:900;font-size:1.2rem;">불편사항 접수</div>'
