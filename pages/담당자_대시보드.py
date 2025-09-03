@@ -277,37 +277,38 @@ gb.configure_column(
 # 페이지네이션 자동 + 행 애니메이션 + 더블클릭 선택
 gb.configure_pagination(paginationAutoPageSize=True)
 gb.configure_selection(selection_mode="single", use_checkbox=False)
+# grid 옵션 설정 부분
 gb.configure_grid_options(
-    rowHeight=40,
-    animateRows=True,
+    rowHeight=36,
     suppressRowClickSelection=True,
     suppressClickEdit=True,
-    onRowDoubleClicked=JsCode(
-        """
+    onRowDoubleClicked=JsCode("""
         function(e){
             e.api.deselectAll();
             e.node.setSelected(true);
         }
-        """
-    ),
+    """),
 )
-gb.configure_grid_options(domLayout='normal')  # ← 내부 스크롤 사용
+gb.configure_grid_options(domLayout='normal')   # ← 추가: 내부 스크롤 사용
+
 # 상단 빠른 검색
 q = st.text_input("🔎 검색", "", placeholder="이름, 내용, 부서…")
 
 grid_options = gb.build()
 grid_options["quickFilterText"] = q
 
+# AgGrid 호출 부분 (height=500 유지)
 grid_resp = AgGrid(
     main_df,
     gridOptions=grid_options,
-    height=500,                # 고정 높이 유지
-    theme="balham",
+    height=500,                       # ← 그대로 500 유지
+    theme="alpine",                   # alpine/balham 중 쓰시는 테마 유지
     allow_unsafe_jscode=True,
     update_mode=GridUpdateMode.SELECTION_CHANGED,
-    fit_columns_on_grid_load=False,   # 컬럼 폭 자동 맞춤 해제
-    custom_css={                # ✅ domLayout 강제
-        ".ag-root-wrapper": {"domLayout": "normal"}
+    fit_columns_on_grid_load=False,
+    custom_css={                      # ← 내부 스크롤 강제
+        ".ag-root-wrapper": {"height": "100%"},
+        ".ag-body-viewport": {"overflow-y": "auto"}
     }
 )
 
