@@ -67,13 +67,15 @@ st.markdown(
     .k-hero h1 {{ font-size:2.1rem; font-weight:800; color:{BRAND}; margin:0; }}
 
     /* ✅ 기본 컨테이너 테두리 스타일 */
-    div[data-testid="stVerticalBlockBorderWrapper"] {{
+ /* ✅ 기본 컨테이너 테두리 스타일 */
+    .content div[data-testid="stVerticalBlockBorderWrapper"] {
         background: {BG_SOFT};
         border: 1px solid #E5EAF2;
         border-radius: 14px;
         padding: 1rem 1.1rem 1.1rem;
         box-shadow: 0 6px 18px rgba(10,47,89,.06);
-    }}
+    }
+
 
     /* ✅ 테두리 제거 클래스 */
     .no-border div[data-testid="stVerticalBlockBorderWrapper"] {{
