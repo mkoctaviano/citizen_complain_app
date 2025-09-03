@@ -84,21 +84,27 @@ def process_one(minwon_id: int, model_version: str = "worker_v1") -> bool:
     pred = run_full_inference(text)
 
     # Normalize/defend keys
-    keywords = pred.get("keywords") or []
-    intents = pred.get("intents") or {}
-    if isinstance(intents, str):
-        intents = {"의도": intents}
-    dept = pred.get("department") or None
-    subdept = pred.get("subdepartment") or None
-    urgency = pred.get("urgency") or None
-    emotion = pred.get("emotion") or None
-    extra = pred.get("extra") or {}
+    keywords = pred.get("키워드Top") or []
+    intent   = pred.get("의도") or ""
+    dept     = pred.get("상위부서") or None
+    subdept  = pred.get("부서") or None
+    urgency  = pred.get("urgency") or None
+    emotion  = pred.get("emotion") or None
+
+    # Add 상위부서Top2 and 후보TopK to 기타 (extra)
+    extra = {
+        "상위부서Top2": pred.get("상위부서Top2") or [],
+        "상위부서_후보TopK": pred.get("상위부서_후보TopK") or [],
+        "부서_후보TopK": pred.get("부서_후보TopK") or [],
+        "공통확인_사유": pred.get("공통확인_사유") or "",
+        "input_final": pred.get("input_final") or "",
+    }
 
     # Save
     결과_등록(
         민원번호=minwon_id,
         키워드=keywords,
-        의도=intents,
+        의도={"의도": intent},
         부서=dept,
         세부분야=subdept,
         긴급도=urgency,
