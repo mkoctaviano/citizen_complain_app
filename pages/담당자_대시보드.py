@@ -299,7 +299,7 @@ gb.configure_grid_options(
 gb.configure_grid_options(domLayout='normal')   # ← 추가: 내부 스크롤 사용
 
 # 상단 빠른 검색
-q = st.text_input("🔎 검색", "", placeholder="이름, 내용, 부서…")
+q = st.text_input("민원 검색", "", placeholder="이름, 내용, 부서…")
 
 grid_options = gb.build()
 grid_options["quickFilterText"] = q
