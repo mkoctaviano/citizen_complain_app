@@ -84,12 +84,10 @@ def process_one(minwon_id: int, model_version: str = "worker_v1") -> bool:
     pred = run_full_inference(text)
 
     # Normalize/defend keys
-    keywords = pred.get("키워드Top") or []
-    intent   = pred.get("의도") or ""
-    dept     = pred.get("상위부서") or None
-    subdept  = pred.get("부서") or None
-    urgency  = pred.get("urgency") or None
-    emotion  = pred.get("emotion") or None
+    keywords = pred.get("keywords") or []
+    intent   = pred.get("intents", {}).get("의도") or ""
+    dept     = pred.get("department") or pred.get("상위부서") or "공통확인"
+    subdept  = pred.get("subdepartment") or pred.get("부서") or "공통확인"
 
     # Add 상위부서Top2 and 후보TopK to 기타 (extra)
     extra = {
