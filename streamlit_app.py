@@ -86,51 +86,43 @@ st.markdown(
         background:#fff!important; color:{BRAND}!important; border-radius:999px!important;
         border:1px solid {BRAND}!important; padding:.65rem 1.2rem!important;
     }}
-
-    /* ✅ 심플 헤더 텍스트 전용 스타일 */
-    .k-title-main {{
-        font-weight:900; font-size:2.1rem; color:{BRAND};
-    }}
-    .k-title-sub {{
-        font-weight:700; font-size:1.1rem; color:{BRAND};
-        text-align:right;
-    }}
     </style>
     """,
     unsafe_allow_html=True,
 )
 
-
+import base64
 
 # ---- header ----
-import base64
-import mimetypes
 hdr = st.container()
 with hdr:
-    cols = st.columns([2, 7, 3])
+    cols = st.columns([2, 7, 3])  # ← [1,8,3] 에서 살짝 여유 주기
 
-    # 왼쪽: 민심청
     with cols[0]:
-        if LOGO and Path(LOGO).exists():
+        if LOGO:
             with open(LOGO, "rb") as f:
-                b64_logo = base64.b64encode(f.read()).decode("utf-8")
+                b64_logo = base64.b64encode(f.read()).decode()
             st.markdown(
                 f"""
-                <div style="display:flex; align-items:center; gap:10px; margin-top:8px;">
-                    <img src="data:image/png;base64,{b64_logo}" style="height:56px;width:auto;">
-                    <span class="k-title-main">민심청</span>
+                <div style="
+                    display:inline-flex; align-items:center; gap:16px;
+                    white-space:nowrap; flex-wrap:nowrap; overflow:visible;
+                    margin-top:20px;
+                ">
+                    <img src="data:image/png;base64,{b64_logo}"
+                         style="height:80px; width:auto; object-fit:contain;">
+                    <span style="font-weight:900; font-size:2.2rem; color:#0B2F59;">민심청</span>
                 </div>
                 """,
                 unsafe_allow_html=True,
             )
-        else:
-            st.markdown('<span class="k-title-main">민심청</span>', unsafe_allow_html=True)
 
-    # 오른쪽: 민원 포털
     with cols[2]:
-        st.markdown('<div class="k-title-sub">민원 포털</div>', unsafe_allow_html=True)
-
-
+        st.markdown(
+            f"""<div style="display:flex;align-items:center;justify-content:flex-end;
+                     height:46px;color:{BRAND};font-weight:700;">민원 포털</div>""",
+            unsafe_allow_html=True,
+        )
 
 st.markdown(
     '<div class="k-header"><div style="font-weight:900;font-size:1.2rem;">불편사항 접수</div>'
@@ -170,9 +162,3 @@ with c2:
                 _goto("pages/담당자_대시보드.py")
             else:
                 st.error("비밀번호가 올바르지 않습니다.")
-
-st.markdown('</div>', unsafe_allow_html=True)
-
-
-
-
