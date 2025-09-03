@@ -81,29 +81,26 @@ section[data-testid="stChatInput"] textarea:focus{
 </style>
 """, unsafe_allow_html=True)
 
+# --- ✅ 민원제출 직전 success 박스 전용 CSS ---
 st.markdown("""
 <style>
-/* 모든 st.success 박스 공통 오버라이드 */
-div[data-testid="stAlert"].stAlert.success {
-  background-color: #ffffff !important;  /* 흰색 배경 */
-  color: #0B2F59 !important;             /* 파란 텍스트 */
-  border: 2px solid #0B2F59 !important;  /* 파란 테두리 */
-  border-radius: 12px !important;
-  box-shadow: 0 6px 18px rgba(11,47,89,.06);
+#ready-to-submit ~ div[data-testid="stAlert"] {
+    background-color: #ffffff !important;   /* 흰색 배경 */
+    border: 2px solid #0B2F59 !important;   /* 파란 테두리 */
+    border-radius: 12px !important;
+    box-shadow: 0 6px 18px rgba(11,47,89,.06);
 }
-
-/* 안쪽 텍스트 색 */
-div[data-testid="stAlert"].stAlert.success p {
-  color: #0B2F59 !important;
+#ready-to-submit ~ div[data-testid="stAlert"] p {
+    color: #0B2F59 !important;
+    font-weight: 600;
 }
-
-/* 아이콘 색 */
-div[data-testid="stAlert"].stAlert.success svg {
-  color: #0B2F59 !important;
-  fill: #0B2F59 !important;
+#ready-to-submit ~ div[data-testid="stAlert"] svg {
+    color: #0B2F59 !important;
+    fill: #0B2F59 !important;
 }
 </style>
 """, unsafe_allow_html=True)
+
 
 
 
