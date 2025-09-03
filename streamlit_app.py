@@ -192,3 +192,5 @@ import streamlit as st
 from pathlib import Path
 from citizen_complain_app import model_core
 
+print("KEI_BOOSTER_PATH:", os.getenv("KEI_BOOSTER_PATH"))
+print("Exists?", Path(os.getenv("KEI_BOOSTER_PATH")).exists())
