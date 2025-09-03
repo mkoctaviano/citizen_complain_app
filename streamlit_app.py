@@ -48,14 +48,6 @@ def _goto(page_path: str):
         st.page_link(page_path, label="이동하기 →")
         st.stop()
 
-    .no-border div[data-testid="stVerticalBlockBorderWrapper"] {
-        background: none !important;
-        border: none !important;
-        box-shadow: none !important;
-        padding: 0 !important;
-        border-radius: 0 !important;
-    }
-
 # ---- styles ----
 st.markdown(
     f"""
