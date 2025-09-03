@@ -41,6 +41,13 @@ st.markdown("""
   position: sticky; top: 0; z-index: 2;
 }
 
+/* ✅ 헤더 텍스트 색/크기 (여기 추가) */
+.ag-theme-alpine .ag-header-cell-text {
+  color: #0B2F59 !important;   /* 파란색 */
+  font-size: 16px !important;  /* 크게 */
+  font-weight: 800 !important; /* 굵게 */
+  text-align: center !important; /* 가운데 정렬 */
+  
 /* zebra, hover, selected */
 .ag-theme-alpine .ag-row-odd { background: #fbfdff; }
 .ag-theme-alpine .ag-row-hover .ag-cell { background:#f5f8fd !important; }
@@ -275,7 +282,7 @@ gb.configure_column(
 )
 
 # 페이지네이션 자동 + 행 애니메이션 + 더블클릭 선택
-gb.configure_pagination(paginationAutoPageSize=True)
+#gb.configure_pagination(paginationAutoPageSize=True)
 gb.configure_selection(selection_mode="single", use_checkbox=False)
 # grid 옵션 설정 부분
 gb.configure_grid_options(
