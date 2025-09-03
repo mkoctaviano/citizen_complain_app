@@ -218,12 +218,21 @@ def _norm_label(s: str) -> str:
 # Parent / Child Router
 # -------------------------------------------------------------------
 @cache_resource(show_spinner=False)
+from transformers import AutoTokenizer, AutoModelForSequenceClassification
+
 def load_parent_model(parent_dir: Path):
-    assert (parent_dir / "label_encoder.json").exists(), "parent/label_encoder.json 없음"
-    with open(parent_dir / "label_encoder.json", "r", encoding="utf-8") as f:
-        classes = json.load(f)["classes"]
     tok = AutoTokenizer.from_pretrained(parent_dir, local_files_only=True)
-    mdl = AutoModelForSequenceClassification.from_pretrained(parent_dir, local_files_only=True).to(DEVICE).eval()
+    mdl = AutoModelForSequenceClassification.from_pretrained(
+        parent_dir, local_files_only=True
+    ).to(DEVICE).eval()
+
+    # classes from model config
+    config = mdl.config
+    if hasattr(config, "id2label") and config.id2label:
+        classes = [config.id2label[i] for i in range(len(config.id2label))]
+    else:
+        classes = None  # fallback if not present
+
     return tok, mdl, classes
 
 def build_child_map(child_dir: Optional[Path], child_registry: Optional[Path],
