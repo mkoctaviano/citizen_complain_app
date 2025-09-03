@@ -27,48 +27,37 @@ hide_multipage_nav_css()
 st.markdown(
     """
     <style>
-    /* Outer outline for the whole conversation */
-    [data-testid="stChatMessageContainer"] {
-        border: 2px solid #D8E3F6;
-        border-radius: 16px;
-        padding: 16px;
-        background: #fff;
-        max-height: 70vh;
-        overflow-y: auto;
+    /* --- Whole conversation box (the st.container with border=True) --- */
+    div[data-testid="stVerticalBlockBorderWrapper"]{
+        /* this targets bordered containers; it's OK if you only have one on this page */
+        border: 2px solid #D8E3F6 !important;   /* stronger outline */
+        border-radius: 16px !important;
+        padding: 16px !important;
+        background: #FFFFFF !important;
+        box-shadow: 0 4px 14px rgba(11,47,89,0.06);
+        margin-top: 8px;
     }
 
-    /* Style individual bubbles */
-    [data-testid="stChatMessage"] [data-testid="stChatMessageContent"] {
-        border: 1px solid #D8E3F6;
-        border-radius: 14px;
-        padding: 12px 14px;
-        background: #F7FAFF;  /* light background */
+    /* --- Message bubbles (assistant & user) --- */
+    [data-testid="stChatMessage"] [data-testid="stChatMessageContent"]{
+        border: 1px solid #D8E3F6 !important;
+        background: #F7FAFF !important;     /* light blue default */
+        border-radius: 14px !important;
+        padding: 12px 14px !important;
     }
+    [data-testid="stChatMessage"][data-testid="user"] [data-testid="stChatMessageContent"]{
+        background: #F6F6F6 !important;     /* gray for user */
+    }
+    [data-testid="stChatMessage"]{ margin: 10px 0 !important; }
 
-    /* Space between messages */
-    [data-testid="stChatMessage"] {
-        margin: 10px 0;
-    }
-
-    /* Assistant vs. User different bubble colors (optional) */
-    [data-testid="stChatMessage"][data-testid="assistant"] [data-testid="stChatMessageContent"] {
-        background: #E9F2FF;   /* bluish for assistant */
-    }
-    [data-testid="stChatMessage"][data-testid="user"] [data-testid="stChatMessageContent"] {
-        background: #F6F6F6;   /* gray for user */
-    }
-
-    /* Avatar adjustments */
-    [data-testid="stChatMessageAvatar"] img {
-        width: 28px;
-        height: 28px;
-        border-radius: 50%;
+    /* Optional: avatar sizing */
+    [data-testid="stChatMessageAvatar"] img{
+        width: 28px; height: 28px; border-radius: 50%;
     }
     </style>
     """,
     unsafe_allow_html=True,
 )
-
 
 # ---------------- Session state init ----------------
 if "chat_history" not in st.session_state:
@@ -137,9 +126,13 @@ if not st.session_state.chat_history:
     bot_say(STEPS[0]["prompt"])
 
 # ---------------- Render chat history ----------------
-for m in st.session_state.chat_history:
-    with st.chat_message("assistant" if m["role"] == "assistant" else "user"):
-        st.write(m["content"])
+chat_box = st.container(border=True)   # ✅ real wrapper we can style
+
+with chat_box:
+    for m in st.session_state.chat_history:
+        role = "assistant" if m["role"] == "assistant" else "user"
+        with st.chat_message(role):    # add avatar here if you want
+            st.write(m["content"])
 
 # ---------------- Voice input (content step only) ----------------
 VOICE_ON = True
