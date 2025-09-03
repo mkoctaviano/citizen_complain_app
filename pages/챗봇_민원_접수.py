@@ -228,22 +228,42 @@ else:
 
 # ---------------- Final submission button ----------------
 if st.session_state.get("ready_to_submit") and not st.session_state.submitted:
-    st.success(" 모든 정보가 입력되었습니다. 아래 버튼을 눌러 민원을 최종 제출해 주세요.")
+    st.success("모든 정보가 입력되었습니다. 아래 버튼을 눌러 민원을 최종 제출해 주세요.")
+    
     if st.button("민원 제출하기"):
         try:
-            cap = st.session_state.get("voice", None)
-            기타 = {"voice": {"gs_uri": cap.gs_uri, "duration_sec": cap.duration_sec}} if cap else None
+            # Run classification model
+            content_text = st.session_state.answers["content"]
+            result = run_full_inference(content_text)
 
+            # Handle voice input if present
+            cap = st.session_state.get("voice", None)
+            기타 = {"voice": {"gs_uri": cap.gs_uri, "duration_sec": cap.duration_sec}} if cap else {}
+
+            # Add extra fields from model result
+            기타.update(result.get("extra", {}))
+
+            # Save to DB
             민원번호 = 민원_등록(
                 접수경로="웹",
-                연락처=st.session_state.answers["phone"],
-                내용=st.session_state.answers["content"],
-                첨부경로목록=[],
                 이름=st.session_state.answers["name"],
+                연락처=st.session_state.answers["phone"],
                 주소=st.session_state.answers["address"],
-                # 기타=기타,
+                내용=content_text,
+                첨부경로목록=[],
+                키워드=", ".join(result.get("keywords", [])),
+                의도=result.get("intents", {}).get("의도", ""),
+                상위부서=result.get("department", ""),
+                부서=result.get("subdepartment", ""),
+                감정=result.get("emotion", None),
+                긴급도=result.get("urgency", None),
+                상위부서_후보TopK=json.dumps(result.get("extra", {}).get("router", {}).get("상위부서_후보TopK", []), ensure_ascii=False),
+                부서_후보TopK=json.dumps(result.get("extra", {}).get("router", {}).get("부서_후보TopK", []), ensure_ascii=False),
+                상위부서Top2=json.dumps(result.get("extra", {}).get("router", {}).get("상위부서Top2", []), ensure_ascii=False),
+                기타=json.dumps(기타, ensure_ascii=False)
             )
 
+            # Store and redirect
             st.session_state["last_ticket_no"] = 민원번호
             st.session_state["submitted"] = True
             st.switch_page("pages/complaint_submitted.py")
