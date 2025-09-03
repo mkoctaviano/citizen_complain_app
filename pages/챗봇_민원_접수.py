@@ -150,22 +150,23 @@ if not st.session_state.chat_history:
 # ---------------- Render chat history ----------------
 from html import escape
 
-# Marker so CSS can scope the chat window outline
+# marker so the CSS can scope the window outline
 st.markdown('<div id="conv-start"></div>', unsafe_allow_html=True)
 
-chat_box = st.container(border=True)  # this gets the nice outline
+chat_box = st.container(border=True)
 with chat_box:
     for m in st.session_state.chat_history:
         role = "assistant" if m["role"] == "assistant" else "user"
-        # explicit avatars (use your own file path if you prefer)
-        avatar_symbol = "🤖" if role == "assistant" else "🙂"
-        with st.chat_message(role, avatar=avatar_symbol):
+        # ✅ explicit avatars so they always show
+        avatar = "🤖" if role == "assistant" else "🙂"
+        with st.chat_message(role, avatar=avatar):
             text = escape(m["content"]).replace("\n", "<br>")
-            # row controls alignment; bubble is the colored pill
+            # alignment row + text-only bubble
             st.markdown(
                 f'<div class="bubble-row {role}"><div class="bubble {role}">{text}</div></div>',
                 unsafe_allow_html=True,
             )
+
 
 # ---------------- Voice input (content step only) ----------------
 VOICE_ON = True
