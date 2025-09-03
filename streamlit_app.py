@@ -188,4 +188,5 @@ with c2:
             else:
                 st.error("비밀번호가 올바르지 않습니다.")
 
-print("[DEBUG] BASE_DIR:", BASE_DIR)
+BASE_DIR = Path(__file__).resolve().parent
+print("[DEBUG] BASE_DIR inside model_core:", BASE_DIR)
