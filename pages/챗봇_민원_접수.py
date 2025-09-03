@@ -26,9 +26,7 @@ hide_multipage_nav_css()
 
 st.markdown("""
 <style>
-/* ---- Chat window outline (scoped) ----
-   Applies ONLY to the bordered container right after #conv-start.
-   We do NOT reset global wrappers so your general grid outline stays. */
+/* ---- Chat window outline (scoped only to this chat) ---- */
 #conv-start + div[data-testid="stVerticalBlock"] div[data-testid="stVerticalBlockBorderWrapper"]{
   border:2px solid #D8E3F6 !important;
   border-radius:16px !important;
@@ -38,26 +36,34 @@ st.markdown("""
   margin-top:8px;
 }
 
-/* Remove Streamlit’s default bubble/background for the message content */
+/* Flatten Streamlit’s default row/content backgrounds */
+[data-testid="stChatMessage"]{
+  background:transparent !important; box-shadow:none !important;
+  margin:10px 0 !important; gap:6px !important; align-items:flex-end;
+}
 [data-testid="stChatMessage"] [data-testid="stChatMessageContent"]{
   background:transparent !important; border:none !important; box-shadow:none !important; padding:0 !important;
 }
-/* Remove any gray stripe/card in the message column */
 [data-testid="stChatMessage"] > div:nth-child(2){
-  background:transparent !important; box-shadow:none !important; border:none !important; padding:0 !important; border-radius:0 !important;
-}
-/* Make the whole row flat (keeps avatars visible) */
-[data-testid="stChatMessage"]{
-  background:transparent !important; box-shadow:none !important;
-  margin:8px 0 !important; gap:6px !important; align-items:flex-end;
+  background:transparent !important; border:none !important; box-shadow:none !important; padding:0 !important; border-radius:0 !important;
 }
 
-/* ---- Our own rows to control alignment (no :has needed) ---- */
-.bubble-row{ display:flex; width:100%; }
-.bubble-row.assistant{ justify-content:flex-start; }
-.bubble-row.user{ justify-content:flex-end; }
+/* ------------ KEY FIX ------------- */
+/* Make the message content shrink to the bubble size */
+.bubble-row{ display:inline-flex; width:auto; align-items:flex-end; }
+/* Assistant block stays on the left */
+[data-testid="stChatMessage"]:has(.bubble-row.assistant){
+  flex-direction:row !important;            /* avatar left, bubble right of it */
+  justify-content:flex-start !important;
+}
+/* User block moves to the right, with avatar BEFORE the bubble */
+[data-testid="stChatMessage"]:has(.bubble-row.user){
+  flex-direction:row !important;            /* keep order: avatar then content */
+  justify-content:flex-end !important;      /* push both to the right edge */
+}
+/* ---------------------------------- */
 
-/* ---- Text-only bubbles ---- */
+/* Text-only bubbles */
 .bubble{
   display:inline-block; max-width:70%;
   border-radius:12px; padding:8px 12px; margin:2px 0; line-height:1.45;
