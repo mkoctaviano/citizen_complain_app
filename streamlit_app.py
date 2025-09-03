@@ -50,64 +50,62 @@ def _goto(page_path: str):
 
 # ---- styles ----
 st.markdown(
-    f"""
+    """
     <style>
-    .block-container {{ padding-top: 0rem !important; }}
+    .block-container { padding-top: 0rem !important; }
 
-    .k-header {{
+    .k-header {
         background: {BRAND}; color: #fff; padding:.75rem 1.25rem;
         border-top-left-radius:8px; border-top-right-radius:8px;
         display:flex; align-items:center; justify-content:space-between;
-    }}
-    .k-card {{
+    }
+    .k-card {
         background:#fff; border:1px solid #E5EAF2; border-radius:12px;
         box-shadow:0 6px 18px rgba(10,47,89,.06); padding:1.25rem 1.25rem 1.5rem;
-    }}
-    .k-hero {{ text-align:center; padding:1.6rem 0 .75rem; }}
-    .k-hero h1 {{ font-size:2.1rem; font-weight:800; color:{BRAND}; margin:0; }}
+    }
+    .k-hero { text-align:center; padding:1.6rem 0 .75rem; }
+    .k-hero h1 { font-size:2.1rem; font-weight:800; color:{BRAND}; margin:0; }
 
-     /* ✅ 기본 컨테이너 테두리 스타일 */
-    .content div[data-testid="stVerticalBlockBorderWrapper"] {{
+    /* ✅ 기본 컨테이너 테두리 스타일(본문 영역에만 적용) */
+    .content div[data-testid="stVerticalBlockBorderWrapper"] {
         background: {BG_SOFT};
         border: 1px solid #E5EAF2;
         border-radius: 14px;
         padding: 1rem 1.1rem 1.1rem;
         box-shadow: 0 6px 18px rgba(10,47,89,.06);
-    }}
-
-
+    }
 
     /* ✅ 테두리 제거 클래스 */
-    .no-border div[data-testid="stVerticalBlockBorderWrapper"] {{
+    .no-border div[data-testid="stVerticalBlockBorderWrapper"] {
         background: none !important;
         border: none !important;
         box-shadow: none !important;
         padding: 0 !important;
         border-radius: 0 !important;
-    }}
+    }
 
-    .k-tile-title {{ margin:0; font-size:1.15rem; font-weight:800; color:{BRAND}; }}
-    .k-tile-sub   {{ margin:0; font-size:.95rem;  color:#374151; }}
+    .k-tile-title { margin:0; font-size:1.15rem; font-weight:800; color:{BRAND}; }
+    .k-tile-sub   { margin:0; font-size:.95rem;  color:#374151; }
 
-    .k-btn-primary button {{
+    .k-btn-primary button {
         background:{BRAND}!important; color:#fff!important; border-radius:999px!important;
         border:1px solid {ACCENT}!important; padding:.65rem 1.2rem!important;
-    }}
-    .k-btn-secondary button {{
+    }
+    .k-btn-secondary button {
         background:#fff!important; color:{BRAND}!important; border-radius:999px!important;
         border:1px solid {BRAND}!important; padding:.65rem 1.2rem!important;
-    }}
+    }
 
-    /* ✅ 헤더(Row) 안의 자동 박스 제거 */
-    .k-header-row div[data-testid="stVerticalBlockBorderWrapper"] {{
+    /* ✅ 헤더(Row) 안의 자동 박스 제거 (안 써도 됨) */
+    .k-header-row div[data-testid="stVerticalBlockBorderWrapper"] {
         background: transparent !important;
         border: none !important;
         box-shadow: none !important;
         padding: 0 !important;
         border-radius: 0 !important;
-    }}
+    }
     </style>
-    """,
+    """.format(BRAND=BRAND, ACCENT=ACCENT, BG_SOFT=BG_SOFT),
     unsafe_allow_html=True,
 )
 
