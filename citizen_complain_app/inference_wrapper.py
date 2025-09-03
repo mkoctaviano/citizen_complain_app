@@ -228,7 +228,7 @@
 
 #!/usr/bin/env python
 # coding: utf-8
-# ---- inference_wrapper.py (top of file) ----
+# inference_wrapper.py
 from pathlib import Path
 import os
 
@@ -236,34 +236,30 @@ import streamlit as st
 from google.cloud import storage
 from google.oauth2 import service_account
 
-BUCKET_NAME = "kds-hackathon-models"              # <- your bucket
-BLOB_NAME   = "kei_booster.pkl"                   # <- at bucket root
-DEST_PATH   = Path("/tmp/kei_booster.pkl")        # where model_core expects it
+# -----------------------------
+# 1) Ensure KEI booster exists
+# -----------------------------
+def ensure_kei_booster():
+    dest = Path("/tmp/kei_booster.pkl")
+    if dest.exists() and dest.stat().st_size > 0:
+        return str(dest)
 
-def _gcs_client():
-    # requires st.secrets["gcp_sa"] and st.secrets["GCP_PROJECT"]
     creds = service_account.Credentials.from_service_account_info(st.secrets["gcp_sa"])
-    return storage.Client(credentials=creds, project=st.secrets["GCP_PROJECT"])
+    client = storage.Client(credentials=creds, project=st.secrets["GCP_PROJECT"])
+    bucket = client.bucket("kds-hackathon-models")   # your bucket name
+    blob = bucket.blob("kei_booster.pkl")            # file at bucket root
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    blob.download_to_filename(str(dest))
+    return str(dest)
 
-def _download_kei():
-    if DEST_PATH.exists() and DEST_PATH.stat().st_size > 0:
-        return
-    client = _gcs_client()
-    bucket = client.bucket(BUCKET_NAME)
-    blob = bucket.blob(BLOB_NAME)
-    DEST_PATH.parent.mkdir(parents=True, exist_ok=True)
-    blob.download_to_filename(str(DEST_PATH))
-    # sanity check
-    if not DEST_PATH.exists() or DEST_PATH.stat().st_size == 0:
-        raise FileNotFoundError(f"Downloaded file is missing/empty at {DEST_PATH}")
+# Download *before* model_core import
+os.environ["KEI_BOOSTER_PATH"] = ensure_kei_booster()
 
-# 1) Download BEFORE importing model_core
-_download_kei()
-os.environ["KEI_BOOSTER_PATH"] = str(DEST_PATH)
-
-# 2) Now import model_core and (optionally) pin its path
+# -----------------------------
+# 2) Now safe to import model_core
+# -----------------------------
 import citizen_complain_app.model_core as mc
-mc.KEI_PKL = DEST_PATH  # belt & suspenders
+mc.KEI_PKL = Path(os.environ["KEI_BOOSTER_PATH"]) 
 
 # -----------------------------
 # 3) Ensure main_model (cache ok)
