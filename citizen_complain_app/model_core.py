@@ -217,9 +217,6 @@ def _norm_label(s: str) -> str:
 # -------------------------------------------------------------------
 # Parent / Child Router
 # -------------------------------------------------------------------
-@cache_resource(show_spinner=False)
-from transformers import AutoTokenizer, AutoModelForSequenceClassification
-
 def load_parent_model(parent_dir: Path):
     tok = AutoTokenizer.from_pretrained(parent_dir, local_files_only=True)
     mdl = AutoModelForSequenceClassification.from_pretrained(
