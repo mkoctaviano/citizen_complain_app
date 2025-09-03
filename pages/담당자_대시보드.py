@@ -291,7 +291,7 @@ gb.configure_grid_options(
         """
     ),
 )
-
+gb.configure_grid_options(domLayout='normal')  # ← 내부 스크롤 사용
 # 상단 빠른 검색
 q = st.text_input("🔎 검색", "", placeholder="이름, 내용, 부서…")
 
@@ -301,12 +301,13 @@ grid_options["quickFilterText"] = q
 grid_resp = AgGrid(
     main_df,
     gridOptions=grid_options,
-    theme="balham",
+    height=500,                 # ← 그대로 유지
+    theme="alpine",
     allow_unsafe_jscode=True,
     update_mode=GridUpdateMode.SELECTION_CHANGED,
     fit_columns_on_grid_load=False,
-    height=None  # 또는 제거
 )
+
 
 
 # ---------- selection -> detail ----------
