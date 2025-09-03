@@ -314,10 +314,12 @@ def classify_with_router(booster, parent_tok, parent_mdl, parent_classes, child_
         intent = "미정"
     inp = kei_compose_input(text, keywords=keywords[:3], intent=intent)
 
-    # Parent
-    p_label, p_prob, p_margin = predict_parent(parent_tok, parent_mdl, parent_classes, inp)
+    # Parent (Get top K first)
+    p_labs, p_probs, p_margin = predict_parent_topk(parent_tok, parent_mdl, parent_classes, inp, k=cfg.parent_topk)
+    p_label = p_labs[0]
+    p_prob = p_probs[0]
+
     if (p_prob < cfg.parent_floor) or (p_margin < cfg.parent_margin):
-        p_labs, p_probs, _ = predict_parent_topk(parent_tok, parent_mdl, parent_classes, inp, k=cfg.parent_topk)
         return {
             "텍스트": text,
             "키워드Top": keywords,
@@ -326,6 +328,7 @@ def classify_with_router(booster, parent_tok, parent_mdl, parent_classes, child_
             "부서": "공통확인",
             "상위부서_후보TopK": [f"{l} ({p:.2f})" for l,p in zip(p_labs, p_probs)],
             "부서_후보TopK": [],
+            "상위부서Top2": [f"{l} ({p:.2f})" for l,p in zip(p_labs[:2], p_probs[:2])],
             "input_final": inp,
             "공통확인_사유": "parent_prob<{:.2f}".format(cfg.parent_floor) if p_prob < cfg.parent_floor else "parent_margin<{:.2f}".format(cfg.parent_margin),
         }
@@ -343,16 +346,19 @@ def classify_with_router(booster, parent_tok, parent_mdl, parent_classes, child_
             "부서_후보TopK": [],
             "input_final": inp,
             "공통확인_사유": "",
+            "상위부서Top2": [f"{l} ({p:.2f})" for l,p in zip(p_labs[:2], p_probs[:2])],
         }
 
     c_label, c_prob, c_margin, note = predict_child(c_path, inp)
     if note == "single_class":
-        return {
+       return {
             "텍스트": text, "키워드Top": keywords, "의도": intent,
             "상위부서": f"{p_label} ({p_prob:.2f})",
-            "부서": f"{c_label} (1.00)",
+            "부서": f"{c_label} ({c_prob:.2f})",
             "상위부서_후보TopK": [], "부서_후보TopK": [],
+            "상위부서Top2": [f"{l} ({p:.2f})" for l,p in zip(p_labs[:2], p_probs[:2])],
             "input_final": inp, "공통확인_사유": ""
+    
         }
 
     if (c_prob < cfg.child_floor) or (c_margin < cfg.child_margin):
