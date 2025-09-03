@@ -68,7 +68,7 @@ st.markdown(
 
     /* ✅ 기본 컨테이너 테두리 스타일(본문 영역에만 적용) */
     .content div[data-testid="stVerticalBlockBorderWrapper"] {
-        background: {BG_SOFT};
+        background: {{BG_SOFT}};
         border: 1px solid #E5EAF2;
         border-radius: 14px;
         padding: 1rem 1.1rem 1.1rem;
