@@ -1,6 +1,9 @@
 #!/usr/bin/env python
 # coding: utf-8
 
+# In[1]:
+
+
 # citizen_complain_app/model_core.py
 import os, json, re, unicodedata
 from pathlib import Path
@@ -45,6 +48,7 @@ from transformers import (
     AutoModel,
     AutoModelForSequenceClassification,
     AutoModelForTokenClassification,
+    pipeline,
 )
 from sentence_transformers import SentenceTransformer
 from rapidfuzz import fuzz, process as fuzz_process
@@ -169,32 +173,6 @@ def _norm_label(s: str) -> str:
     s = s.lower()
     s = re.sub(r"[^0-9a-z가-힣]", "", s)
     return s
-
-# ---- NEW: Top-K formatting helpers (for consistent UI fields) ----
-_SCORE_SUFFIX_RE = re.compile(r"\s*\(\s*[-+]?\d+(?:\.\d+)?\s*\)\s*$")
-def strip_score_suffix(s: Any) -> str:
-    """'교통 (0.96)' -> '교통'; numeric-only like '0.63' -> '-' (hidden)."""
-    if isinstance(s, (int, float)):
-        return "-"
-    s = str(s or "").strip()
-    if not s:
-        return "-"
-    s = _SCORE_SUFFIX_RE.sub("", s).strip()
-    try:
-        float(s)  # numeric string?
-        return "-"
-    except Exception:
-        return s
-
-def _fmt_topk(labels: List[str], probs: List[float], k: Optional[int] = None) -> List[str]:
-    if k is not None:
-        labels = labels[:k]
-        probs  = probs[:k]
-    # keep the label as-is here (UI can strip later if needed)
-    return [f"{labels[i]} ({probs[i]:.2f})" for i in range(len(labels))]
-
-def _top2_from_parent(labels: List[str], probs: List[float]) -> List[str]:
-    return _fmt_topk(labels, probs, k=2)
 
 # -------------------------------------------------------------------
 # Parent / Child Router
@@ -329,23 +307,18 @@ class RouterConfig:
 
 def classify_with_router(booster, parent_tok, parent_mdl, parent_classes, child_map, text: str,
                          cfg: RouterConfig = RouterConfig()) -> Dict[str, Any]:
-    # Step 1: KEI feature extraction
+    # KEI features
     keywords = kei_extract_keywords(booster, text, top_k=5)
     intent   = kei_extract_intent(booster, text)
     if intent == "공통확인":
         intent = "미정"
     inp = kei_compose_input(text, keywords=keywords[:3], intent=intent)
 
-    # Step 2: Parent prediction (Top-K)
+    # Parent (Get top K first)
     p_labs, p_probs, p_margin = predict_parent_topk(parent_tok, parent_mdl, parent_classes, inp, k=cfg.parent_topk)
     p_label = p_labs[0]
-    p_prob  = p_probs[0]
+    p_prob = p_probs[0]
 
-    # Build once, reuse everywhere
-    parent_topk_fmt = _fmt_topk(p_labs, p_probs)          # e.g., ['교통 (0.96)', ...]
-    parent_top2_fmt = _top2_from_parent(p_labs, p_probs)  # e.g., ['교통 (0.96)', '도로 (0.12)']
-
-    # Step 3: Low-confidence parent → "공통확인"
     if (p_prob < cfg.parent_floor) or (p_margin < cfg.parent_margin):
         return {
             "텍스트": text,
@@ -353,18 +326,14 @@ def classify_with_router(booster, parent_tok, parent_mdl, parent_classes, child_
             "의도": intent,
             "상위부서": "공통확인",
             "부서": "공통확인",
-            "상위부서_후보TopK": parent_topk_fmt,
+            "상위부서_후보TopK": [f"{l} ({p:.2f})" for l,p in zip(p_labs, p_probs)],
             "부서_후보TopK": [],
-            "상위부서Top2": parent_top2_fmt,
+            "상위부서Top2": [f"{l} ({p:.2f})" for l,p in zip(p_labs[:2], p_probs[:2])],
             "input_final": inp,
-            "공통확인_사유": (
-                "parent_prob<{:.2f}".format(cfg.parent_floor)
-                if p_prob < cfg.parent_floor else
-                "parent_margin<{:.2f}".format(cfg.parent_margin)
-            ),
+            "공통확인_사유": "parent_prob<{:.2f}".format(cfg.parent_floor) if p_prob < cfg.parent_floor else "parent_margin<{:.2f}".format(cfg.parent_margin),
         }
 
-    # Step 4: Route to child model
+    # Child
     c_path = child_map.get(p_label)
     if c_path is None:
         return {
@@ -373,66 +342,45 @@ def classify_with_router(booster, parent_tok, parent_mdl, parent_classes, child_
             "의도": intent,
             "상위부서": f"{p_label} ({p_prob:.2f})",
             "부서": f"{p_label} ({p_prob:.2f})",
-            "상위부서_후보TopK": parent_topk_fmt,
+            "상위부서_후보TopK": [],
             "부서_후보TopK": [],
-            "상위부서Top2": parent_top2_fmt,
             "input_final": inp,
             "공통확인_사유": "",
+            "상위부서Top2": [f"{l} ({p:.2f})" for l,p in zip(p_labs[:2], p_probs[:2])],
         }
 
-    # Step 5: Predict child
     c_label, c_prob, c_margin, note = predict_child(c_path, inp)
-
-    # Step 6: Child = single class
     if note == "single_class":
-        return {
-            "텍스트": text,
-            "키워드Top": keywords,
-            "의도": intent,
+       return {
+            "텍스트": text, "키워드Top": keywords, "의도": intent,
             "상위부서": f"{p_label} ({p_prob:.2f})",
             "부서": f"{c_label} ({c_prob:.2f})",
-            "상위부서_후보TopK": parent_topk_fmt,
-            "부서_후보TopK": [f"{c_label} (1.00)"],
-            "상위부서Top2": parent_top2_fmt,
-            "input_final": inp,
-            "공통확인_사유": "",
+            "상위부서_후보TopK": [], "부서_후보TopK": [],
+            "상위부서Top2": [f"{l} ({p:.2f})" for l,p in zip(p_labs[:2], p_probs[:2])],
+            "input_final": inp, "공통확인_사유": ""
+    
         }
 
-    # Step 7: Low-confidence child → "공통확인"
     if (c_prob < cfg.child_floor) or (c_margin < cfg.child_margin):
+        p_labs, p_probs, _ = predict_parent_topk(parent_tok, parent_mdl, parent_classes, inp, k=cfg.parent_topk)
         c_labs, c_probs, _, note2 = predict_child_topk(c_path, inp, k=cfg.child_topk)
-        c_list = [f"{c_labs[0]} (1.00)"] if note2 == "single_class" else _fmt_topk(c_labs, c_probs)
+        c_list = [f"{c_labs[0]} (1.00)"] if note2 == "single_class" else [f"{l} ({p:.2f})" for l,p in zip(c_labs, c_probs)]
         return {
-            "텍스트": text,
-            "키워드Top": keywords,
-            "의도": intent,
+            "텍스트": text, "키워드Top": keywords, "의도": intent,
             "상위부서": f"{p_label} ({p_prob:.2f})",
             "부서": "공통확인",
-            "상위부서_후보TopK": parent_topk_fmt,
+            "상위부서_후보TopK": [f"{l} ({p:.2f})" for l,p in zip(p_labs, p_probs)],
             "부서_후보TopK": c_list,
-            "상위부서Top2": parent_top2_fmt,
             "input_final": inp,
-            "공통확인_사유": (
-                "child_prob<{:.2f}".format(cfg.child_floor)
-                if c_prob < cfg.child_floor else
-                "child_margin<{:.2f}".format(cfg.child_margin)
-            ),
+            "공통확인_사유": "child_prob<{:.2f}".format(cfg.child_floor) if c_prob < cfg.child_floor else "child_margin<{:.2f}".format(cfg.child_margin),
         }
 
-    # Step 8: All confident → return both
-    c_labs, c_probs, _, _ = predict_child_topk(c_path, inp, k=cfg.child_topk)
-    child_topk_fmt = _fmt_topk(c_labs, c_probs)
     return {
-        "텍스트": text,
-        "키워드Top": keywords,
-        "의도": intent,
+        "텍스트": text, "키워드Top": keywords, "의도": intent,
         "상위부서": f"{p_label} ({p_prob:.2f})",
         "부서": f"{c_label} ({c_prob:.2f})",
-        "상위부서_후보TopK": parent_topk_fmt,
-        "부서_후보TopK": child_topk_fmt,
-        "상위부서Top2": parent_top2_fmt,
-        "input_final": inp,
-        "공통확인_사유": "",
+        "상위부서_후보TopK": [], "부서_후보TopK": [],
+        "input_final": inp, "공통확인_사유": ""
     }
 
 @cache_resource(show_spinner=False)
@@ -802,8 +750,24 @@ def predict_priority_single(text: str, w_urg: float = 0.8, w_emo: float = 0.2) -
     }
 
 # -------------------------------------------------------------------
-# NEW: label graders for UI/DB
+# NEW: label cleaners & grade mappers for UI/DB
 # -------------------------------------------------------------------
+_SCORE_SUFFIX_RE = re.compile(r"\s*\(\s*[-+]?\d+(?:\.\d+)?\s*\)\s*$")
+
+def strip_score_suffix(s: Any) -> str:
+    """'교통 (0.96)' -> '교통'; numeric-only like '0.63' -> '-' (hidden)."""
+    if isinstance(s, (int, float)):
+        return "-"
+    s = str(s or "").strip()
+    if not s:
+        return "-"
+    s = _SCORE_SUFFIX_RE.sub("", s).strip()
+    try:
+        float(s)  # numeric string?
+        return "-"
+    except Exception:
+        return s
+
 def grade_emotion_kr(score: Optional[float]) -> str:
     """감정 스코어(0~1) → 한국어 등급."""
     if score is None:
@@ -846,31 +810,19 @@ def load_kw_votes(csv_path: Path):
 # -------------------------------------------------------------------
 def classify_and_cause(text: str) -> Dict[str, Any]:
     text = _textify(text).strip()
-    cls   = classify(text)
+    cls = classify(text)
     cause = run_cause(text)
-    sim   = retriever_search(text, k=5, score_floor=0.0)
-    pr    = predict_priority_single(text)
-
-    urgency_label = grade_priority_kr(pr["priority"]) if pr else None
-    emotion_label = grade_emotion_kr(pr["emotion_norm"]) if pr else None
-
     return {
         "keywords": cls.get("키워드Top", []),
         "intents": {"의도": cls.get("의도", "미정")},
         "department": strip_score_suffix(cls.get("상위부서", "")),
         "subdepartment": strip_score_suffix(cls.get("부서", "")),
-        "urgency": urgency_label,
-        "emotion": emotion_label,
+        "urgency": None,
+        "emotion": None,
         "model_version": "chatbot_v1",
         "extra": {
             "router": cls,
             "cause": cause,
-            "similarity": sim,
-            "priority": pr,
-            "상위부서Top2": cls.get("상위부서Top2", []),
-            "상위부서_후보TopK": cls.get("상위부서_후보TopK", []),
-            "부서_후보TopK": cls.get("부서_후보TopK", []),
-            "공통확인_사유": cls.get("공통확인_사유", ""),
         },
     }
 
@@ -888,45 +840,39 @@ def run_full_inference(text: str, k_sim: int = 5) -> Dict[str, Any]:
             "urgency": None,
             "emotion": None,
             "model_version": "chatbot_v1",
-            "extra": {
-                "router": {},
-                "cause": {"cause_span": "", "cause_score": 0.0},
-                "similarity": [],
-                "priority": None,
-                "상위부서Top2": [],
-                "상위부서_후보TopK": [],
-                "부서_후보TopK": [],
-                "공통확인_사유": "",
-            },
+            "extra": {"router": {}, "cause": {"cause_span": "", "cause_score": 0.0}, "similarity": [], "priority": None},
         }
 
+    # Classification + cause
     cls = classify(text)
     cause = run_cause(text)
+
+    # Similarity
     sim = retriever_search(text, k=k_sim, score_floor=0.0)
+
+    # Priority (if models available)
     pr = predict_priority_single(text)
 
+    # Map numeric -> labels for UI/DB
     urgency_label = grade_priority_kr(pr["priority"]) if pr else None
     emotion_label = grade_emotion_kr(pr["emotion_norm"]) if pr else None
 
-    return {
+    out: Dict[str, Any] = {
         "keywords": cls.get("키워드Top", []),
         "intents": {"의도": cls.get("의도", "미정")},
         "department": strip_score_suffix(cls.get("상위부서", "")),
         "subdepartment": strip_score_suffix(cls.get("부서", "")),
-        "urgency": urgency_label,
-        "emotion": emotion_label,
+        "urgency": urgency_label,     # e.g., '즉시 대응'
+        "emotion": emotion_label,     # e.g., '강한 불편감'
         "model_version": "chatbot_v1",
         "extra": {
             "router": cls,
             "cause": cause,
             "similarity": sim,
-            "priority": pr,
-            "상위부서Top2": cls.get("상위부서Top2", []),
-            "상위부서_후보TopK": cls.get("상위부서_후보TopK", []),
-            "부서_후보TopK": cls.get("부서_후보TopK", []),
-            "공통확인_사유": cls.get("공통확인_사유", ""),
+            "priority": pr,  # keep raw urgency_norm/emotion_norm/priority for analytics
         },
     }
+    return out
 
 # ----------------------------
 # Backward-compatibility shims
@@ -938,3 +884,6 @@ def load_cause_pipeline(*args, **kwargs):
 def run_cause_pipeline(pl, text: str, *args, **kwargs):
     """v1 compatibility: use v2 run_cause()."""
     return run_cause(text)
+
+
+# In[ ]:
