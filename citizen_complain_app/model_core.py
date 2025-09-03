@@ -15,6 +15,7 @@ import pandas as pd
 import torch
 import torch.nn.functional as F
 from dataclasses import dataclass
+import citizen_complain_app.model_core as mc
 
 # -------------------------------------------------------------------
 # Streamlit-safe caching (falls back to lru_cache if not in Streamlit)
