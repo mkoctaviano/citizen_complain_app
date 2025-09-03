@@ -56,8 +56,8 @@ st.markdown("""
   padding: 8px 12px;        /* ← add */
   border-radius: 12px;      /* ← add */
   white-space: pre-wrap;
-  overflow-wrap: anywhere;
-  word-break: break-word;
+  overflow-wrap: break-word;    /* <-- use break-word instead */
+  word-break: break-word;       /* fallback */
 }
 
 .bubble.assistant{ background:#E9F2FF; color:#111; }
