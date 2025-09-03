@@ -42,6 +42,7 @@ st.markdown("""
 [data-testid="stChatMessage"]{
   background:transparent !important; box-shadow:none !important;
   margin:8px 0 !important; gap:6px !important; align-items:flex-end;
+  display: flex !important;  /* ✅ 여기도 포함됨 */
 }
 [data-testid="stChatMessage"] [data-testid="stChatMessageContent"]{
   background:transparent !important; border:none !important; box-shadow:none !important; padding:0 !important;
@@ -57,21 +58,14 @@ st.markdown("""
   white-space:normal; overflow-wrap:break-word; word-break:normal;
 }
 .bubble.assistant{ background:#E9F2FF; color:#111; }
-.bubble.user{ background:#0B2F59; color:#fff; }
+.bubble.user{ background:#0B2F59; color:#fff; margin-left: auto !important; }
 
-/* Alignment: assistant left, user right (avatar ends up on the right for user) */
+/* Alignment: assistant left, user right */
 [data-testid="stChatMessage"]:has(.bubble.assistant){
   flex-direction:row !important; justify-content:flex-start !important;
 }
 [data-testid="stChatMessage"]:has(.bubble.user){
   flex-direction:row-reverse !important; justify-content:flex-end !important;
-}
-
-/* Avatar size */
-[data-testid="stChatMessageAvatar"] img{ width:32px; height:32px; border-radius:50%; }
-/* ✅ 여기 추가 */
-[data-testid="stChatMessage"]{
-  display: flex !important;
 }
 [data-testid="stChatMessage"]:has(.bubble.user) [data-testid="stChatMessageContent"]{
   display: flex !important;
@@ -82,11 +76,10 @@ st.markdown("""
   display: flex !important;
   justify-content: flex-start !important;
 }
-.bubble.user{
-  margin-left: auto !important;
-}
-</style>
-""", unsafe_allow_html=True)
+
+/* Avatar size */
+[data-testid="stChatMessageAvatar"] img{ width:32px; height:32px; border-radius:50%; }
+
 /* Input docked to the chat window */
 section[data-testid="stChatInput"]{
   border-top:1px solid #D8E3F6; margin-top:-10px; padding:12px;
@@ -97,6 +90,7 @@ section[data-testid="stChatInput"] textarea:focus{
 }
 </style>
 """, unsafe_allow_html=True)
+
 
 # --- ✅ 민원제출 직전 success 박스 전용 CSS ---
 st.markdown("""
