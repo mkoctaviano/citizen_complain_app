@@ -28,16 +28,14 @@ hide_multipage_nav_css()
 
 st.markdown("""
 <style>
+
 /* 사용자 메시지 말풍선 너비 확장 */
 .stChatMessage.user {
-    max-width: 90% !important;
-    white-space: pre-wrap;
-    word-break: break-word;
+  max-width: 90% !important;
+  white-space: pre-wrap;
+  word-break: break-word;
 }
 
-</style>
-""", unsafe_allow_html=True)
-<style>
 /* Chat window outline (scoped only to the container after #conv-start) */
 #conv-start + div[data-testid="stVerticalBlock"] div[data-testid="stVerticalBlockBorderWrapper"]{
   border:2px solid #D8E3F6 !important;
@@ -52,7 +50,7 @@ st.markdown("""
 [data-testid="stChatMessage"]{
   background:transparent !important; box-shadow:none !important;
   margin:8px 0 !important; gap:6px !important; align-items:flex-end;
-  display: flex !important;  /* ✅ 여기도 포함됨 */
+  display:flex !important;
 }
 [data-testid="stChatMessage"] [data-testid="stChatMessageContent"]{
   background:transparent !important; border:none !important; box-shadow:none !important; padding:0 !important;
@@ -68,7 +66,7 @@ st.markdown("""
   white-space:normal; overflow-wrap:break-word; word-break:normal;
 }
 .bubble.assistant{ background:#E9F2FF; color:#111; }
-.bubble.user{ background:#0B2F59; color:#fff; margin-left: auto !important; }
+.bubble.user{ background:#0B2F59; color:#fff; margin-left:auto !important; }
 
 /* Alignment: assistant left, user right */
 [data-testid="stChatMessage"]:has(.bubble.assistant){
@@ -78,13 +76,10 @@ st.markdown("""
   flex-direction:row-reverse !important; justify-content:flex-end !important;
 }
 [data-testid="stChatMessage"]:has(.bubble.user) [data-testid="stChatMessageContent"]{
-  display: flex !important;
-  justify-content: flex-end !important;
-  width: 100% !important;
+  display:flex !important; justify-content:flex-end !important; width:100% !important;
 }
 [data-testid="stChatMessage"]:has(.bubble.assistant) [data-testid="stChatMessageContent"]{
-  display: flex !important;
-  justify-content: flex-start !important;
+  display:flex !important; justify-content:flex-start !important;
 }
 
 /* Avatar size */
@@ -100,6 +95,7 @@ section[data-testid="stChatInput"] textarea:focus{
 }
 </style>
 """, unsafe_allow_html=True)
+
 
 
 # --- ✅ 민원제출 직전 success 박스 전용 CSS ---
@@ -311,6 +307,7 @@ if st.session_state.get("ready_to_submit") and not st.session_state.submitted:
             # Store and redirect
             st.session_state["last_ticket_no"] = 민원번호
             st.session_state["submitted"] = True
+            
             st.switch_page("pages/complaint_submitted.py")
             st.stop()
 
