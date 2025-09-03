@@ -86,10 +86,32 @@ st.markdown(
         background:#fff!important; color:{BRAND}!important; border-radius:999px!important;
         border:1px solid {BRAND}!important; padding:.65rem 1.2rem!important;
     }}
+
+    /* ✅ 헤더 박스: 왼쪽 '민심청', 오른쪽 '민원 포털' 공용 스타일 */
+    .k-pill {{
+        background:#fff;
+        border:1px solid #E5EAF2;
+        border-radius:16px;
+        box-shadow:0 8px 24px rgba(10,47,89,.06);
+        height:90px;
+        padding:0 18px;
+        display:flex; align-items:center; gap:16px;
+        overflow:hidden; white-space:nowrap;
+    }}
+    .k-pill .k-title-main {{
+        font-weight:900; font-size:2.1rem; color:{BRAND};
+        letter-spacing:-0.3px;
+    }}
+    .k-pill-right {{ justify-content:center; }}
+    .k-pill-right .k-title-sub {{
+        font-weight:800; font-size:1.05rem; color:{BRAND};
+        letter-spacing:-0.2px;
+    }}
     </style>
     """,
     unsafe_allow_html=True,
 )
+
 
 import base64
 
