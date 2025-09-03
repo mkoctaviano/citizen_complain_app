@@ -116,46 +116,55 @@ st.markdown(
 import base64
 
 # ---- header ----
+import base64
+import mimetypes
+
+# ---- header ----
 hdr = st.container()
 with hdr:
-    cols = st.columns([2, 7, 3])  # 비율은 그대로
+    cols = st.columns([2, 7, 3])
 
     # -------- LEFT: 민심청 (로고 + 타이틀) --------
     with cols[0]:
-        if LOGO:
-            with open(LOGO, "rb") as f:
-                b64_logo = base64.b64encode(f.read()).decode()
-            st.markdown(
-                f"""
+        html_left = None
+        if LOGO and Path(LOGO).exists():
+            try:
+                mime, _ = mimetypes.guess_type(LOGO)
+                mime = mime or "image/png"  # fallback
+                with open(LOGO, "rb") as f:
+                    b64_logo = base64.b64encode(f.read()).decode("utf-8")
+                html_left = f"""
                 <div class="k-pill" style="margin-top:8px;">
-                    <img src="data:image/png;base64,{b64_logo}"
-                         alt="logo"
-                         style="height:56px;width:auto;object-fit:contain;">
-                    <span class="k-title-main">민심청</span>
+                  <img src="data:{mime};base64,{b64_logo}"
+                       alt="logo" style="height:56px;width:auto;object-fit:contain;">
+                  <span class="k-title-main">민심청</span>
                 </div>
-                """,
-                unsafe_allow_html=True,
-            )
-        else:
-            st.markdown(
                 """
+            except Exception:
+                # 로고 읽기 실패 시 텍스트만
+                html_left = """
                 <div class="k-pill" style="margin-top:8px;">
-                    <span class="k-title-main">민심청</span>
+                  <span class="k-title-main">민심청</span>
                 </div>
-                """,
-                unsafe_allow_html=True,
-            )
+                """
+        else:
+            html_left = """
+            <div class="k-pill" style="margin-top:8px;">
+              <span class="k-title-main">민심청</span>
+            </div>
+            """
+        st.markdown(html_left, unsafe_allow_html=True)
 
-    # -------- CENTER: (필요시 검색/안내 영역) --------
+    # -------- CENTER (필요 시 사용) --------
     # with cols[1]:
-    #     st.markdown('<div class="k-pill" style="margin-top:8px;"></div>', unsafe_allow_html=True)
+    #     st.markdown('<div style="height:90px;"></div>', unsafe_allow_html=True)
 
     # -------- RIGHT: 민원 포털 --------
     with cols[2]:
         st.markdown(
             """
             <div class="k-pill k-pill-right" style="margin-top:8px;">
-                <div class="k-title-sub">민원 포털</div>
+              <div class="k-title-sub">민원 포털</div>
             </div>
             """,
             unsafe_allow_html=True,
