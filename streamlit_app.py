@@ -47,6 +47,14 @@ def _goto(page_path: str):
     except Exception:
         st.page_link(page_path, label="이동하기 →")
         st.stop()
+    /* ✅ 헤더 영역의 자동 박스 제거 */
+    .no-border div[data-testid="stVerticalBlockBorderWrapper"] {{
+        background: none !important;
+        border: none !important;
+        box-shadow: none !important;
+        padding: 0 !important;
+        border-radius: 0 !important;
+    }}
 
 # ---- styles ----
 st.markdown(
@@ -103,7 +111,7 @@ st.markdown(
 import base64
 
 # ---- header ----
-st.markdown('<div class="k-header-row">', unsafe_allow_html=True)  # ✅ 헤더 시작(박스 제거 범위)
+st.markdown('<div class="no-border">', unsafe_allow_html=True)  # ✅ 박스 제거용 div 시작
 
 hdr = st.container()
 with hdr:
@@ -135,7 +143,8 @@ with hdr:
             unsafe_allow_html=True,
         )
 
-st.markdown('</div>', unsafe_allow_html=True)  # ✅ 헤더 종료
+st.markdown('</div>', unsafe_allow_html=True)  # ✅ 박스 제거용 div 종료
+
 
 st.markdown(
     '<div class="k-header"><div style="font-weight:900;font-size:1.2rem;">불편사항 접수</div>'
