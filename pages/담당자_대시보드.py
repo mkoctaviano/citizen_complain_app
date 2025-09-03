@@ -301,12 +301,13 @@ grid_options["quickFilterText"] = q
 grid_resp = AgGrid(
     main_df,
     gridOptions=grid_options,
-    height=500,                 # autoHeight 원하면 이 줄 제거
-    theme="alpine",             # ⬅️ 모던 테마
+    theme="balham",
     allow_unsafe_jscode=True,
     update_mode=GridUpdateMode.SELECTION_CHANGED,
     fit_columns_on_grid_load=False,
+    height=None  # 또는 제거
 )
+
 
 # ---------- selection -> detail ----------
 selected_rows = grid_resp.get("selected_rows", None)
