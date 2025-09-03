@@ -62,7 +62,7 @@ st.markdown("""
   flex-direction:row !important; justify-content:flex-start !important;
 }
 [data-testid="stChatMessage"]:has(.bubble.user){
-  flex-direction:row !important; justify-content:flex-start !important;
+  flex-direction:row-reverse !important; justify-content:flex-start !important;
 }
 
 /* Avatar size */
