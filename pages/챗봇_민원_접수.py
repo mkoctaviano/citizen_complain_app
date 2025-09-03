@@ -147,7 +147,7 @@ if not st.session_state.chat_history:
     bot_say(STEPS[0]["prompt"])
 
 # ---------------- Render chat history ----------------
-ffrom html import escape
+from html import escape
 
 # marker so the CSS can target just this chat window
 st.markdown('<div id="conv-start"></div>', unsafe_allow_html=True)
