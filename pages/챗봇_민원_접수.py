@@ -80,25 +80,27 @@ section[data-testid="stChatInput"] textarea:focus{
 }
 </style>
 """, unsafe_allow_html=True)
+
 # --- ✅ success 박스 전용 CSS ---
 st.markdown("""
 <style>
-#ready-to-submit + div[data-testid="stAlert"]{
+#ready-to-submit ~ div[data-testid="stAlert"]{
   background:#ffffff !important;
   color:#0B2F59 !important;
   border:2px solid #D8E3F6 !important;
   border-radius:12px !important;
   box-shadow:0 6px 18px rgba(11,47,89,.06);
 }
-#ready-to-submit + div[data-testid="stAlert"] [data-testid="stMarkdownContainer"] p{
+#ready-to-submit ~ div[data-testid="stAlert"] [data-testid="stMarkdownContainer"] p{
   color:#0B2F59 !important;
 }
-#ready-to-submit + div[data-testid="stAlert"] svg{
+#ready-to-submit ~ div[data-testid="stAlert"] svg{
   color:#0B2F59 !important; 
   fill:#0B2F59 !important;
 }
 </style>
 """, unsafe_allow_html=True)
+
 
 # ---------------- Session state init ----------------
 if "chat_history" not in st.session_state:
