@@ -71,6 +71,9 @@ PRIORITY_DIR = Path(os.getenv("PRIORITY_DIR",    str(BASE_DIR / "priority_model"
 URGENCY_DIR  = PRIORITY_DIR / "urgency_model_roberta_reg"
 EMOTION_DIR  = PRIORITY_DIR / "KoElectra_emotion"
 
+DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
+MAX_LEN = 256
+
 # KEI booster file (can be overridden via env)
 KEI_PKL = Path(os.getenv("KEI_BOOSTER_PATH", "/tmp/kei_booster.pkl"))
 
