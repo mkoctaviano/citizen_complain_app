@@ -89,14 +89,19 @@ def process_one(minwon_id: int, model_version: str = "worker_v1") -> bool:
     dept     = pred.get("department") or pred.get("상위부서") or "공통확인"
     subdept  = pred.get("subdepartment") or pred.get("부서") or "공통확인"
 
-    # Add 상위부서Top2 and 후보TopK to 기타 (extra)
-    extra = {
-        "상위부서Top2": pred.get("상위부서Top2") or [],
-        "상위부서_후보TopK": pred.get("상위부서_후보TopK") or [],
-        "부서_후보TopK": pred.get("부서_후보TopK") or [],
-        "공통확인_사유": pred.get("공통확인_사유") or "",
-        "input_final": pred.get("input_final") or "",
-    }
+    # Save full 'extra' field from model output
+    extra = pred.get("extra", {}).copy()
+
+# Add some extra fields from top-level if needed
+    extra["input_final"] = pred.get("input_final") or ""
+    # # Add 상위부서Top2 and 후보TopK to 기타 (extra)
+    # extra = {
+    #     "상위부서Top2": pred.get("상위부서Top2") or [],
+    #     "상위부서_후보TopK": pred.get("상위부서_후보TopK") or [],
+    #     "부서_후보TopK": pred.get("부서_후보TopK") or [],
+    #     "공통확인_사유": pred.get("공통확인_사유") or "",
+    #     "input_final": pred.get("input_final") or "",
+    # }
 
     # Save
     결과_등록(
