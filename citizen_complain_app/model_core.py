@@ -307,18 +307,19 @@ class RouterConfig:
 
 def classify_with_router(booster, parent_tok, parent_mdl, parent_classes, child_map, text: str,
                          cfg: RouterConfig = RouterConfig()) -> Dict[str, Any]:
-    # KEI features
+    # Step 1: KEI feature extraction
     keywords = kei_extract_keywords(booster, text, top_k=5)
     intent   = kei_extract_intent(booster, text)
     if intent == "공통확인":
         intent = "미정"
     inp = kei_compose_input(text, keywords=keywords[:3], intent=intent)
 
-    # Parent (Get top K first)
+    # Step 2: Parent prediction (Top-K)
     p_labs, p_probs, p_margin = predict_parent_topk(parent_tok, parent_mdl, parent_classes, inp, k=cfg.parent_topk)
     p_label = p_labs[0]
     p_prob = p_probs[0]
 
+    # Step 3: Low-confidence parent → "공통확인"
     if (p_prob < cfg.parent_floor) or (p_margin < cfg.parent_margin):
         return {
             "텍스트": text,
@@ -326,14 +327,14 @@ def classify_with_router(booster, parent_tok, parent_mdl, parent_classes, child_
             "의도": intent,
             "상위부서": "공통확인",
             "부서": "공통확인",
-            "상위부서_후보TopK": [f"{l} ({p:.2f})" for l,p in zip(p_labs, p_probs)],
+            "상위부서_후보TopK": [f"{l} ({p:.2f})" for l, p in zip(p_labs, p_probs)],
             "부서_후보TopK": [],
-            "상위부서Top2": [f"{l} ({p:.2f})" for l,p in zip(p_labs[:2], p_probs[:2])],
+            "상위부서Top2": [f"{l} ({p:.2f})" for l, p in zip(p_labs[:2], p_probs[:2])],
             "input_final": inp,
             "공통확인_사유": "parent_prob<{:.2f}".format(cfg.parent_floor) if p_prob < cfg.parent_floor else "parent_margin<{:.2f}".format(cfg.parent_margin),
         }
 
-    # Child
+    # Step 4: Route to child model
     c_path = child_map.get(p_label)
     if c_path is None:
         return {
@@ -344,43 +345,58 @@ def classify_with_router(booster, parent_tok, parent_mdl, parent_classes, child_
             "부서": f"{p_label} ({p_prob:.2f})",
             "상위부서_후보TopK": [],
             "부서_후보TopK": [],
+            "상위부서Top2": [f"{l} ({p:.2f})" for l, p in zip(p_labs[:2], p_probs[:2])],
             "input_final": inp,
             "공통확인_사유": "",
-            "상위부서Top2": [f"{l} ({p:.2f})" for l,p in zip(p_labs[:2], p_probs[:2])],
         }
 
+    # Step 5: Predict child
     c_label, c_prob, c_margin, note = predict_child(c_path, inp)
+
+    # Step 6: Child = single class
     if note == "single_class":
-       return {
-            "텍스트": text, "키워드Top": keywords, "의도": intent,
+        return {
+            "텍스트": text,
+            "키워드Top": keywords,
+            "의도": intent,
             "상위부서": f"{p_label} ({p_prob:.2f})",
             "부서": f"{c_label} ({c_prob:.2f})",
-            "상위부서_후보TopK": [], "부서_후보TopK": [],
-            "상위부서Top2": [f"{l} ({p:.2f})" for l,p in zip(p_labs[:2], p_probs[:2])],
-            "input_final": inp, "공통확인_사유": ""
-    
+            "상위부서_후보TopK": [],
+            "부서_후보TopK": [],
+            "상위부서Top2": [f"{l} ({p:.2f})" for l, p in zip(p_labs[:2], p_probs[:2])],
+            "input_final": inp,
+            "공통확인_사유": "",
         }
 
+    # Step 7: Low-confidence child → "공통확인"
     if (c_prob < cfg.child_floor) or (c_margin < cfg.child_margin):
-        p_labs, p_probs, _ = predict_parent_topk(parent_tok, parent_mdl, parent_classes, inp, k=cfg.parent_topk)
         c_labs, c_probs, _, note2 = predict_child_topk(c_path, inp, k=cfg.child_topk)
-        c_list = [f"{c_labs[0]} (1.00)"] if note2 == "single_class" else [f"{l} ({p:.2f})" for l,p in zip(c_labs, c_probs)]
+        c_list = [f"{c_labs[0]} (1.00)"] if note2 == "single_class" else [f"{l} ({p:.2f})" for l, p in zip(c_labs, c_probs)]
         return {
-            "텍스트": text, "키워드Top": keywords, "의도": intent,
+            "텍스트": text,
+            "키워드Top": keywords,
+            "의도": intent,
             "상위부서": f"{p_label} ({p_prob:.2f})",
             "부서": "공통확인",
-            "상위부서_후보TopK": [f"{l} ({p:.2f})" for l,p in zip(p_labs, p_probs)],
+            "상위부서_후보TopK": [f"{l} ({p:.2f})" for l, p in zip(p_labs, p_probs)],
             "부서_후보TopK": c_list,
+            "상위부서Top2": [f"{l} ({p:.2f})" for l, p in zip(p_labs[:2], p_probs[:2])],
             "input_final": inp,
             "공통확인_사유": "child_prob<{:.2f}".format(cfg.child_floor) if c_prob < cfg.child_floor else "child_margin<{:.2f}".format(cfg.child_margin),
         }
 
+    # Step 8: All confident → return both
     return {
-        "텍스트": text, "키워드Top": keywords, "의도": intent,
+        "텍스트": text,
+        "키워드Top": keywords,
+        "의도": intent,
         "상위부서": f"{p_label} ({p_prob:.2f})",
         "부서": f"{c_label} ({c_prob:.2f})",
-        "상위부서_후보TopK": [], "부서_후보TopK": [],
-        "input_final": inp, "공통확인_사유": ""
+        "상위부서_후보TopK": [],
+        "부서_후보TopK": [],
+        "상위부서Top2": [f"{l} ({p:.2f})" for l, p in zip(p_labs[:2], p_probs[:2])],
+        "input_final": inp,
+        "공통확인_사유": "",
     }
 
 @cache_resource(show_spinner=False)
