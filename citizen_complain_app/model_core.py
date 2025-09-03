@@ -829,19 +829,24 @@ def classify_and_cause(text: str) -> Dict[str, Any]:
     cls = classify(text)
     cause = run_cause(text)
     return {
-        "keywords": cls.get("키워드Top", []),
-        "intents": {"의도": cls.get("의도", "미정")},
-        "department": strip_score_suffix(cls.get("상위부서", "")),
-        "subdepartment": strip_score_suffix(cls.get("부서", "")),
-        "urgency": None,
-        "emotion": None,
-        "model_version": "chatbot_v1",
-        "extra": {
-            "router": cls,
-            "cause": cause,
-        },
-    }
-
+    "keywords": cls.get("키워드Top", []),
+    "intents": {"의도": cls.get("의도", "미정")},
+    "department": strip_score_suffix(cls.get("상위부서", "")),
+    "subdepartment": strip_score_suffix(cls.get("부서", "")),
+    "urgency": urgency_label,
+    "emotion": emotion_label,
+    "model_version": "chatbot_v1",
+    "extra": {
+        "router": cls,
+        "cause": cause,
+        "similarity": sim,
+        "priority": pr,
+        "상위부서Top2": cls.get("상위부서Top2", []),
+        "상위부서_후보TopK": cls.get("상위부서_후보TopK", []),
+        "부서_후보TopK": cls.get("부서_후보TopK", []),
+        "공통확인_사유": cls.get("공통확인_사유", ""),
+    },
+}
 # -------------------------------------------------------------------
 # 🔶 Single entrypoint for the app (classification + cause + sim + priority)
 # -------------------------------------------------------------------
