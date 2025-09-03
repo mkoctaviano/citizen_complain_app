@@ -65,7 +65,6 @@ def fetch_minwon_payload(minwon_id: int):
 
 
 from storage import 처리결과_기존, 결과_등록
-from inference_wrapper import run_full_inference_legacy
 import json
 
 def process_one(row):
@@ -79,8 +78,8 @@ def process_one(row):
     if 처리결과_기존(idx):
         return False
 
-    # Run full inference (legacy for now)
-    pred = run_full_inference_legacy(text)
+
+    pred = run_full_inference(text)
 
     # Parse predicted fields
     dept = pred.get("department") or "공통확인"
