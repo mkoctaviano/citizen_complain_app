@@ -267,15 +267,32 @@ download_main_model()
 
 # -----------------------------
 # 2. Set KEI_BOOSTER_PATH from downloaded main_model
-# -----------------------------
-def _find_kei_booster_path() -> str:
-    local_path = "/tmp/main_model/kei_booster.pkl"
-    if not Path(local_path).exists():
-        raise RuntimeError("KEI booster not found in main_model.")
-    os.environ["KEI_BOOSTER_PATH"] = local_path
-    return local_path
+import os
+import requests
 
-_LOCAL_KEI = _find_kei_booster_path()
+def _find_kei_booster_path() -> str:
+    """
+    Try loading KEI booster from cloud URL (defined in secrets).
+    If not downloaded yet, fetch and save locally.
+    """
+    try:
+        import streamlit as st
+        booster_url = st.secrets["KEI_BOOSTER_URL"]
+        local_path = st.secrets["KEI_BOOSTER_PATH"]
+    except Exception:
+        booster_url = os.getenv("KEI_BOOSTER_URL", "")
+        local_path = os.getenv("KEI_BOOSTER_PATH", "/tmp/kei_booster.pkl")
+
+    if not os.path.exists(local_path):
+        try:
+            r = requests.get(booster_url, timeout=30)
+            r.raise_for_status()
+            with open(local_path, "wb") as f:
+                f.write(r.content)
+        except Exception as e:
+            raise RuntimeError(f"Failed to download KEI Booster: {e}")
+
+    return local_path
 
 # -----------------------------
 # 3. Import model_core and patch its KEI_PKL
