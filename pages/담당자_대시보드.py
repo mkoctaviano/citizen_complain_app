@@ -301,12 +301,16 @@ grid_options["quickFilterText"] = q
 grid_resp = AgGrid(
     main_df,
     gridOptions=grid_options,
-    height=500,                 # ← 그대로 유지
-    theme="alpine",
+    height=500,                # 고정 높이 유지
+    theme="balham",
     allow_unsafe_jscode=True,
     update_mode=GridUpdateMode.SELECTION_CHANGED,
-    fit_columns_on_grid_load=False,
+    fit_columns_on_grid_load=False,   # 컬럼 폭 자동 맞춤 해제
+    custom_css={                # ✅ domLayout 강제
+        ".ag-root-wrapper": {"domLayout": "normal"}
+    }
 )
+
 
 
 
