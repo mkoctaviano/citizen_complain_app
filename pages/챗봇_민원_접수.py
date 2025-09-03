@@ -252,8 +252,7 @@ else:
 
 # ---------------- Final submission button ----------------
 if st.session_state.get("ready_to_submit") and not st.session_state.submitted:
-    st.markdown('<div id="ready-to-submit"></div>', unsafe_allow_html=True)
-    st.success("모든 정보가 입력되었습니다. 아래 버튼을 눌러 민원을 최종 제출해 주세요.")
+    st.markdown('<div class="submit-banner">모든 정보가 입력되었습니다. 아래 버튼을 눌러 민원을 최종 제출해 주세요.</div>', unsafe_allow_html=True)
     
     if st.button("민원 제출하기"):
         try:
