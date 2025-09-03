@@ -23,14 +23,7 @@ st.set_page_config(
 )
 hide_multipage_nav_css()
 
-# ---------------- Avatars / logos ----------------
-# Configure in .streamlit/secrets.toml if you have images:
-# ASSISTANT_AVATAR_URL="https://.../robot.png"
-# USER_AVATAR_URL="https://.../me.png"
-ASSISTANT_AVATAR = st.secrets.get("ASSISTANT_AVATAR_URL", None)
-USER_AVATAR = st.secrets.get("USER_AVATAR_URL", None)
-ASSISTANT_BADGE = st.secrets.get("ASSISTANT_BADGE_TEXT", "BOT")
-USER_BADGE = st.secrets.get("USER_BADGE_TEXT", "ME")
+
 
 # ---------------- Styles: real chat look (bot left, user right) ----------------
 st.markdown("""
@@ -181,35 +174,13 @@ def user_say(msg: str):
 # First prompt
 if not st.session_state.chat_history:
     bot_say(STEPS[0]["prompt"])
-# --- Avatar helpers (emoji fallback if image is invalid) ---
-from pathlib import Path
-
-def _is_image_source(x: str | None) -> bool:
-    if not x:
-        return False
-    p = Path(x)
-    if p.exists() and p.is_file():   # local file in container
-        return True
-    if x.startswith(("http://", "https://")):
-        # Don't hard-fail on HEAD; some CDNs block it. Trust URL shape.
-        return True
-    return False
-
-def _avatar_for(role: str):
-    url = ASSISTANT_AVATAR if role == "assistant" else USER_AVATAR
-    if _is_image_source(url):
-        return url
-    #  emoji fallback (always valid)
-    return "🤖" if role == "assistant" else "🙂"
 # ---------------- Render chat thread ----------------
 from html import escape
 st.markdown('<div id="conv-start"></div>', unsafe_allow_html=True)
 chat_box = st.container(border=True)
 
 def _avatar_for(role: str):
-    if role == "assistant":
-        return ASSISTANT_AVATAR if ASSISTANT_AVATAR else ASSISTANT_BADGE
-    return USER_AVATAR if USER_AVATAR else USER_BADGE
+    return "🤖" if role == "assistant" else "🙂"
 
 with chat_box:
     for m in st.session_state.chat_history:
