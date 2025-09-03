@@ -86,6 +86,15 @@ st.markdown(
         background:#fff!important; color:{BRAND}!important; border-radius:999px!important;
         border:1px solid {BRAND}!important; padding:.65rem 1.2rem!important;
     }}
+        /* ✅ 헤더(Row) 안의 자동 박스(테두리/그림자) 제거 */
+    .k-header-row div[data-testid="stVerticalBlockBorderWrapper"] {
+      background: transparent !important;
+      border: none !important;
+      box-shadow: none !important;
+      padding: 0 !important;
+      border-radius: 0 !important;
+    }
+
     </style>
     """,
     unsafe_allow_html=True,
@@ -94,9 +103,11 @@ st.markdown(
 import base64
 
 # ---- header ----
+st.markdown('<div class="k-header-row">', unsafe_allow_html=True)  # ✅ 헤더 시작(박스 제거 범위)
+
 hdr = st.container()
 with hdr:
-    cols = st.columns([2, 7, 3])  # ← [1,8,3] 에서 살짝 여유 주기
+    cols = st.columns([2, 7, 3])
 
     with cols[0]:
         if LOGO:
@@ -123,6 +134,8 @@ with hdr:
                      height:46px;color:{BRAND};font-weight:700;">민원 포털</div>""",
             unsafe_allow_html=True,
         )
+
+st.markdown('</div>', unsafe_allow_html=True)  # ✅ 헤더 종료
 
 st.markdown(
     '<div class="k-header"><div style="font-weight:900;font-size:1.2rem;">불편사항 접수</div>'
