@@ -47,7 +47,7 @@ def _goto(page_path: str):
     except Exception:
         st.page_link(page_path, label="이동하기 →")
         st.stop()
-    /* ✅ 헤더 영역의 자동 박스 제거 */
+
     .no-border div[data-testid="stVerticalBlockBorderWrapper"] {{
         background: none !important;
         border: none !important;
