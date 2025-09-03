@@ -1,153 +1,147 @@
 #!/usr/bin/env python
 # coding: utf-8
-# citizen_complain_app/inference_wrapper.py
 
-from typing import Dict, Any, List, Optional
 from pathlib import Path
 import os
+from typing import List, Optional
 from collections import Counter
 
-import streamlit as st
+# Streamlit is optional (worker won't have it)
+try:
+    import streamlit as st
+    HAS_ST = True
+except Exception:
+    HAS_ST = False
+
 from google.cloud import storage
 from google.oauth2 import service_account
 
-# =============================================================================
-# 0) Config
-# =============================================================================
-MODELS_BUCKET = st.secrets["GCS_BUCKET_MODELS"]  # e.g., "kds-hackathon-models"
-GCP_PROJECT   = st.secrets["GCP_PROJECT"]
-GCP_SA        = st.secrets["gcp_sa"]
-KEI_DEST      = Path(st.secrets.get("KEI_BOOSTER_PATH", "/tmp/kei_booster.pkl"))
-KEI_FALLBACK  = st.secrets.get("KEI_BOOSTER_URL")  # optional HTTP(s) fallback
 
-MODEL_PREFIXES = [
-    "main_model/",
-    "child_models/",
-    "priority_model/",
-    "retriever_bert/",
-    "cause_tagger/",
-]
+# -----------------------------
+# Secrets / env helpers
+# -----------------------------
+def _get_secret(key: str, default=None):
+    if HAS_ST:
+        val = st.secrets.get(key, None)
+        if val is not None:
+            return val
+    return os.getenv(key, default)
 
-BASE_TMP = Path("/tmp")  # we will set mc.BASE_DIR = /tmp
 
-# =============================================================================
-# 1) GCS helpers
-# =============================================================================
-@st.cache_resource(show_spinner="Authorizing Google Cloud…")
-def _gcs_client() -> storage.Client:
-    creds = service_account.Credentials.from_service_account_info(GCP_SA)
-    return storage.Client(credentials=creds, project=GCP_PROJECT)
+def _gcs_client():
+    # Prefer st.secrets["gcp_sa"], else env var GCP_SA_JSON, else ADC
+    sa_info = None
+    if HAS_ST and "gcp_sa" in st.secrets:
+        sa_info = dict(st.secrets["gcp_sa"])
+    elif os.getenv("GCP_SA_JSON"):
+        import json
+        sa_info = json.loads(os.environ["GCP_SA_JSON"])
 
-def _download_blob(bucket_name: str, blob_name: str, local_path: Path) -> None:
+    project = _get_secret("GCP_PROJECT")
+    if sa_info:
+        creds = service_account.Credentials.from_service_account_info(sa_info)
+        return storage.Client(credentials=creds, project=project)
+    # Fallback: ADC (only works if the environment provides it)
+    return storage.Client(project=project)
+
+
+def _download_blob(bucket: str, blob: str, dest: Path):
     client = _gcs_client()
-    bucket = client.bucket(bucket_name)
-    blob = bucket.blob(blob_name)
-    local_path.parent.mkdir(parents=True, exist_ok=True)
-    blob.download_to_filename(str(local_path))
+    b = client.bucket(bucket).blob(blob)
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    b.download_to_filename(str(dest))
 
-@st.cache_resource(show_spinner="Downloading model folders from GCS…")
-def download_gcs_folder(bucket_name: str, prefix: str, destination_dir: str) -> List[str]:
-    """
-    Syncs all files under 'prefix' from GCS to 'destination_dir' (keeps the relative structure).
-    Returns list of downloaded file paths.
-    """
+
+def _download_prefix(bucket: str, prefix: str, root: Path) -> List[str]:
     client = _gcs_client()
-    bucket = client.bucket(bucket_name)
-    blobs = bucket.list_blobs(prefix=prefix)
-    downloaded_files: List[str] = []
+    b = client.bucket(bucket)
+    files = []
+    for bl in b.list_blobs(prefix=prefix):
+        if bl.name.endswith("/"):
+            continue
+        rel = bl.name[len(prefix):].lstrip("/")
+        local = root / prefix.strip("/") / rel
+        local.parent.mkdir(parents=True, exist_ok=True)
+        bl.download_to_filename(str(local))
+        files.append(str(local))
+    return files
 
-    dest_root = Path(destination_dir)
-    for blob in blobs:
-        if blob.name.endswith("/"):
-            continue  # Skip folder markers
-        rel_path = blob.name[len(prefix):].lstrip("/")
-        local_path = dest_root / prefix.strip("/") / rel_path if prefix else dest_root / rel_path
-        local_path.parent.mkdir(parents=True, exist_ok=True)
-        blob.download_to_filename(str(local_path))
-        downloaded_files.append(str(local_path))
 
-    return downloaded_files
+# -----------------------------
+# Bootstrap: download models to /tmp and set envs
+# -----------------------------
+def bootstrap_models():
+    """
+    Download all required artifacts to /tmp and set envs.
+    Safe to call from Streamlit OR a background worker.
+    """
+    bucket = _get_secret("GCS_BUCKET_MODELS")  # e.g., "kds-hackathon-models"
+    if not bucket:
+        raise RuntimeError("Missing GCS_BUCKET_MODELS (secrets or env).")
 
-# =============================================================================
-# 2) Ensure KEI booster in /tmp
-# =============================================================================
-def ensure_kei_booster() -> str:
-    # If already present and non-empty, done
-    if KEI_DEST.exists() and KEI_DEST.stat().st_size > 0:
-        return str(KEI_DEST)
+    base_tmp = Path("/tmp")
 
-    # Try the exact bucket path first
-    try:
-        _download_blob(MODELS_BUCKET, "kei_booster.pkl", KEI_DEST)
-        if KEI_DEST.exists() and KEI_DEST.stat().st_size > 0:
-            return str(KEI_DEST)
-    except Exception as e:
-        st.warning(f"GCS download of KEI failed: {e}")
+    # 1) KEI booster
+    kei_dest = Path(_get_secret("KEI_BOOSTER_PATH", str(base_tmp / "kei_booster.pkl")))
+    if not (kei_dest.exists() and kei_dest.stat().st_size > 0):
+        _download_blob(bucket, "kei_booster.pkl", kei_dest)
+    if not kei_dest.exists() or kei_dest.stat().st_size == 0:
+        raise FileNotFoundError(f"Failed to fetch gs://{bucket}/kei_booster.pkl")
+    os.environ["KEI_BOOSTER_PATH"] = str(kei_dest)
 
-    # Optional fallback: HTTP(S)
-    if KEI_FALLBACK:
-        try:
-            import requests
-            r = requests.get(KEI_FALLBACK, timeout=60)
-            r.raise_for_status()
-            KEI_DEST.parent.mkdir(parents=True, exist_ok=True)
-            KEI_DEST.write_bytes(r.content)
-            if KEI_DEST.exists() and KEI_DEST.stat().st_size > 0:
-                return str(KEI_DEST)
-        except Exception as e:
-            st.warning(f"HTTP fallback for KEI failed: {e}")
+    # 2) Model folders
+    for prefix in ["main_model/", "child_models/", "priority_model/", "retriever_bert/", "cause_tagger/"]:
+        _download_prefix(bucket, prefix, base_tmp)
 
-    raise FileNotFoundError("Could not fetch kei_booster.pkl from GCS or fallback URL.")
+    # 3) Tell model_core where to look (envs)
+    os.environ.setdefault("MAIN_MODEL_DIR", str(base_tmp / "main_model"))
+    os.environ.setdefault("CHILD_MODEL_DIR", str(base_tmp / "child_models"))
+    os.environ.setdefault("CHILD_REG_PATH",  str(base_tmp / "child_models" / "child_registry.json"))
+    os.environ.setdefault("RETR_MODEL_DIR",  str(base_tmp / "retriever_bert"))
+    os.environ.setdefault("RETR_INDEX_DIR",  str(base_tmp / "retriever_bert"))
+    os.environ.setdefault("CAUSE_MODEL_DIR", str(base_tmp / "cause_tagger"))
+    os.environ.setdefault("PRIORITY_DIR",    str(base_tmp / "priority_model"))
 
-# =============================================================================
-# 3) Download all required folders to /tmp
-# =============================================================================
-for prefix in MODEL_PREFIXES:
-    # Downloads into /tmp/<prefix>/... to match mc.BASE_DIR = /tmp
-    download_gcs_folder(bucket_name=MODELS_BUCKET, prefix=prefix, destination_dir=str(BASE_TMP))
+    return {"base_tmp": base_tmp, "kei_path": kei_dest}
 
-# Ensure KEI before importing model_core
-os.environ["KEI_BOOSTER_PATH"] = ensure_kei_booster()
 
-# =============================================================================
-# 4) Patch model_core paths (import after artifacts exist)
-# =============================================================================
-from citizen_complain_app import model_core as mc
+# ---- IMPORTANT: bootstrap BEFORE importing model_core ----
+_paths = bootstrap_models()
+BASE_TMP = _paths["base_tmp"]
+KEI_DEST = _paths["kei_path"]
 
-# Point model_core to /tmp locations (so it loads local_files_only=True cleanly)
-mc.BASE_DIR     = BASE_TMP
-mc.PARENT_DIR   = mc.BASE_DIR / "main_model"
-mc.CHILD_DIR    = mc.BASE_DIR / "child_models"
-mc.CAUSE_DIR    = mc.BASE_DIR / "cause_tagger"
-mc.PRIORITY_DIR = mc.BASE_DIR / "priority_model"
-mc.RETR_DIR     = mc.BASE_DIR / "retriever_bert"
-mc.RETR_INDEX   = mc.BASE_DIR / "retriever_bert"
+# Now import model_core; it reads KEI_BOOSTER_PATH and dirs from env
+import citizen_complain_app.model_core as mc
 
-# Patch KEI booster path
+# Belt & suspenders: force the resolved paths
 try:
     mc.KEI_PKL = KEI_DEST
 except Exception:
     pass
-
-# Optional legacy copy (some code might look for BASE_DIR/kei_booster.pkl)
 try:
-    legacy = mc.BASE_DIR / "kei_booster.pkl"
-    if KEI_DEST.resolve() != legacy.resolve():
-        legacy.parent.mkdir(parents=True, exist_ok=True)
-        legacy.write_bytes(KEI_DEST.read_bytes())
+    mc.BASE_DIR     = BASE_TMP
+    mc.PARENT_DIR   = mc.BASE_DIR / "main_model"
+    mc.CHILD_DIR    = mc.BASE_DIR / "child_models"
+    mc.CAUSE_DIR    = mc.BASE_DIR / "cause_tagger"
+    mc.PRIORITY_DIR = mc.BASE_DIR / "priority_model"
+    mc.RETR_DIR     = mc.BASE_DIR / "retriever_bert"
+    mc.RETR_INDEX   = mc.BASE_DIR / "retriever_bert"
 except Exception:
     pass
 
-# =============================================================================
-# 5) Export inference functions
-# =============================================================================
-def run_full_inference(text: str, k_sim: int = 5) -> Dict[str, Any]:
+
+# -----------------------------
+# Public API
+# -----------------------------
+def run_full_inference(text: str, k_sim: int = 5):
     return mc.run_full_inference(text, k_sim=k_sim)
+
 
 def _heuristic_emotion_label(emotion_norm: Optional[float]) -> str:
     if emotion_norm is None:
         return "중립"
     return "불만" if emotion_norm >= 0.6 else "중립"
+
 
 def _urgency_label_from_norm(urg_norm: Optional[float]) -> str:
     if urg_norm is None:
@@ -156,6 +150,7 @@ def _urgency_label_from_norm(urg_norm: Optional[float]) -> str:
     if urg_norm >= 0.50: return "높음"
     if urg_norm >= 0.25: return "보통"
     return "낮음"
+
 
 def _kw_vote_reasons(keywords: List[str]) -> List[str]:
     reasons: List[str] = []
@@ -177,7 +172,8 @@ def _kw_vote_reasons(keywords: List[str]) -> List[str]:
         pass
     return reasons
 
-def run_full_inference_legacy(text: str, k_sim: int = 5) -> Dict[str, Any]:
+
+def run_full_inference_legacy(text: str, k_sim: int = 5):
     out_v2 = mc.run_full_inference(text, k_sim=k_sim)
 
     keywords   = out_v2.get("keywords") or []
@@ -224,7 +220,5 @@ def run_full_inference_legacy(text: str, k_sim: int = 5) -> Dict[str, Any]:
         },
     }
 
-__all__ = [
-    "run_full_inference",
-    "run_full_inference_legacy",
-]
+
+__all__ = ["run_full_inference", "run_full_inference_legacy"]
