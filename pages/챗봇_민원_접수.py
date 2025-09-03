@@ -61,9 +61,23 @@ st.markdown("""
 [data-testid="stChatMessage"]:has(.bubble.assistant){
   flex-direction:row !important; justify-content:flex-start !important;
 }
+/* PATCH — push USER text all the way to the right (avatar before bubble) */
 [data-testid="stChatMessage"]:has(.bubble.user){
-  flex-direction:row-reverse !important; justify-content:flex-end !important;
+  flex-direction: row !important;          /* avatar then bubble */
+  justify-content: flex-end !important;    /* push pair to the right edge */
 }
+
+/* keep a small gap and ensure the content shrinks to the bubble */
+[data-testid="stChatMessage"]:has(.bubble.user) [data-testid="stChatMessageAvatar"]{
+  order: 0 !important;
+  margin-right: 8px;                       /* space between avatar and bubble */
+}
+[data-testid="stChatMessage"]:has(.bubble.user) > div:nth-child(2){
+  order: 1 !important;                     /* content after avatar */
+  flex: 0 1 auto !important;               /* shrink-to-fit bubble */
+  margin-left: 0 !important;
+}
+
 
 /* Avatar size */
 [data-testid="stChatMessageAvatar"] img{ width:32px; height:32px; border-radius:50%; }
