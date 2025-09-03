@@ -50,12 +50,16 @@ st.markdown("""
   background:transparent !important; border:none !important; box-shadow:none !important; padding:0 !important; border-radius:0 !important;
 }
 
-/* Bubbles (text only) */
 .bubble{
-  display:inline-block; max-width:70%;
-  border-radius:12px; padding:8px 12px; margin:2px 0; line-height:1.45;
-  white-space:normal; overflow-wrap:break-word; word-break:normal;
+  display: inline-block;
+  max-width: 70%;
+  padding: 8px 12px;        /* ← add */
+  border-radius: 12px;      /* ← add */
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
+
 .bubble.assistant{ background:#E9F2FF; color:#111; }
 .bubble.user{ background:#0B2F59; color:#fff; }
 
@@ -64,12 +68,16 @@ st.markdown("""
   flex-direction:row !important; justify-content:flex-start !important;
 }
 [data-testid="stChatMessage"]:has(.bubble.user){
-  flex-direction:row-reverse !important; justify-content:flex-end !important;
+  flex-direction:row !important; justify-content:flex-end !important;
 }
 
 /* Avatar size */
 [data-testid="stChatMessageAvatar"] img{ width:32px; height:32px; border-radius:50%; }
-
+/* avatar last (far right) */
+[data-testid="stChatMessage"]:has(.bubble.user) [data-testid="stChatMessageAvatar"]{
+  order: 2 !important;
+  margin-left: 8px !important;
+}
 /* Input docked to the chat window */
 section[data-testid="stChatInput"]{
   border-top:1px solid #D8E3F6; margin-top:-10px; padding:12px;
@@ -78,11 +86,11 @@ section[data-testid="stChatInput"]{
 section[data-testid="stChatInput"] textarea:focus{
   outline:none !important; box-shadow:0 0 0 2px #0B2F59 !important; border-color:#0B2F59 !important;
 }
-/* Make the user message content shrink to the bubble so the avatar can sit at the far right */
+/* bubble first (left of avatar), don't stretch it */
 [data-testid="stChatMessage"]:has(.bubble.user) [data-testid="stChatMessageContent"]{
-  flex: 0 0 auto !important;
+  order: 1 !important;
+  flex: 0 1 auto !important;
   width: auto !important;
-  display: inline-flex !important;
 }
 
 </style>
