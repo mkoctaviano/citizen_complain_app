@@ -96,6 +96,17 @@ section[data-testid="stChatInput"] textarea:focus{
   box-shadow:0 0 0 2px #0B2F59 !important;
   border-color:#0B2F59 !important;
 }
+/* Remove Streamlit's gray row background/shadow for user messages */
+[data-testid="stChatMessage"][data-testid="user"] {
+  background: transparent !important;
+  box-shadow: none !important;
+}
+/* Tighten gap between bubble and avatar */
+[data-testid="stChatMessage"] {
+  gap: 4px !important;  /* reduce space between avatar & bubble */
+  margin: 6px 0 !important;
+  align-items: flex-end;
+}
 </style>
 """, unsafe_allow_html=True)
 
