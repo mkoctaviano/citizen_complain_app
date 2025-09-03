@@ -64,59 +64,58 @@ def fetch_minwon_payload(minwon_id: int):
     return dict(row) if row else None
 
 
-def process_one(minwon_id: int, model_version: str = "worker_v1") -> bool:
-    """Run model + save results. Returns True on success."""
-    payload = fetch_minwon_payload(minwon_id)
-    if not payload:
-        print(f"[worker] #{minwon_id} not found. Skipping.")
+from storage import 처리결과_기존, 결과_등록
+from inference_wrapper import run_full_inference_legacy
+import json
+
+def process_one(row):
+    """
+    Process a single 민원 row and write 처리결과.
+    """
+    idx = row["번호"]
+    text = row["내용"]
+
+    # Skip already processed
+    if 처리결과_기존(idx):
         return False
 
-    text = (payload.get("내용") or "").strip()
-    if not text:
-        print(f"[worker] #{minwon_id} empty 내용. Marking 오류.")
-        try:
-            상태_변경(minwon_id, "오류")
-        except Exception:
-            pass
-        return False
+    # Run full inference (legacy for now)
+    pred = run_full_inference_legacy(text)
 
-    print(f"[worker] → inferring #{minwon_id} …")
-    pred = run_full_inference(text)
+    # Parse predicted fields
+    dept = pred.get("department") or "공통확인"
+    subdept = pred.get("subdepartment") or "공통확인"
+    intent = list(pred.get("intents", {}).keys())[0] if pred.get("intents") else "미정"
+    urgency = pred.get("urgency") or "보통"
+    emotion = pred.get("emotion") or "중립"
 
-    # Normalize/defend keys
-    keywords = pred.get("keywords") or []
-    intent   = pred.get("intents", {}).get("의도") or ""
-    dept     = pred.get("department") or pred.get("상위부서") or "공통확인"
-    subdept  = pred.get("subdepartment") or pred.get("부서") or "공통확인"
+    # Build full 기타 / extra field from model output
+    extra = pred.get("extra", {}).copy()  # grab full 'extra' dict
 
-    # Save full 'extra' field from model output
-    extra = pred.get("extra", {}).copy()
+    # Add useful router fields as fallback
+    if "router" in extra:
+        extra["공통확인_사유"] = extra["router"].get("공통확인_사유", "")
+        extra["input_final"] = extra["router"].get("input_final", "")
 
-# Add some extra fields from top-level if needed
-    extra["input_final"] = pred.get("input_final") or ""
-    # # Add 상위부서Top2 and 후보TopK to 기타 (extra)
-    # extra = {
-    #     "상위부서Top2": pred.get("상위부서Top2") or [],
-    #     "상위부서_후보TopK": pred.get("상위부서_후보TopK") or [],
-    #     "부서_후보TopK": pred.get("부서_후보TopK") or [],
-    #     "공통확인_사유": pred.get("공통확인_사유") or "",
-    #     "input_final": pred.get("input_final") or "",
-    # }
+    # Add optional tops if present
+    if "상위부서Top2" in pred:
+        extra["상위부서Top2"] = pred["상위부서Top2"]
+    if "상위부서_후보TopK" in pred:
+        extra["상위부서_후보TopK"] = pred["상위부서_후보TopK"]
+    if "부서_후보TopK" in pred:
+        extra["부서_후보TopK"] = pred["부서_후보TopK"]
 
-    # Save
+    # Save result
     결과_등록(
-        민원번호=minwon_id,
-        키워드=keywords,
-        의도={"의도": intent},
-        부서=dept,
+        번호=idx,
+        상위부서=dept,
         세부분야=subdept,
+        의도=intent,
         긴급도=urgency,
         감정=emotion,
-        모델버전=model_version,
         기타=extra,
     )
-    상태_변경(minwon_id, "처리완료")
-    print(f"[worker] ✓ saved 결과 for #{minwon_id}")
+
     return True
 
 
