@@ -228,134 +228,84 @@
 
 #!/usr/bin/env python
 # coding: utf-8
-
-from typing import Dict, Any, List, Optional
 from pathlib import Path
 import os
-from collections import Counter
 
+import streamlit as st
 from google.cloud import storage
 from google.oauth2 import service_account
-import streamlit as st
 
 # -----------------------------
-# 1. Download main_model folder from GCS
+# 0) Config
 # -----------------------------
-@st.cache_resource
-def download_main_model() -> str:
-    bucket_name = st.secrets["GCS_BUCKET_MODELS"]
-    prefix = "main_model/"
-    destination_dir = "/tmp/main_model"
+MODELS_BUCKET = st.secrets["GCS_BUCKET_MODELS"]
+GCP_PROJECT   = st.secrets["GCP_PROJECT"]
+GCP_SA        = st.secrets["gcp_sa"]
+KEI_LOCAL     = Path(st.secrets.get("KEI_BOOSTER_PATH", "/tmp/kei_booster.pkl"))
+MAIN_MODEL_PREFIX = "main_model/"      # folder in the models bucket
 
-    credentials = service_account.Credentials.from_service_account_info(st.secrets["gcp_sa"])
-    client = storage.Client(credentials=credentials, project=st.secrets["GCP_PROJECT"])
+# -----------------------------
+# 1) Helpers: download from GCS
+# -----------------------------
+@st.cache_resource(show_spinner="Downloading models from GCS…")
+def _gcs_client():
+    creds = service_account.Credentials.from_service_account_info(GCP_SA)
+    return storage.Client(credentials=creds, project=GCP_PROJECT)
+
+def _download_blob_to(local_path: Path, bucket_name: str, blob_name: str) -> None:
+    client = _gcs_client()
     bucket = client.bucket(bucket_name)
+    blob = bucket.blob(blob_name)
+    local_path.parent.mkdir(parents=True, exist_ok=True)
+    blob.download_to_filename(str(local_path))
 
-    blobs = bucket.list_blobs(prefix=prefix)
-    for blob in blobs:
+@st.cache_resource(show_spinner="Fetching KEI booster…")
+def ensure_kei_booster() -> str:
+    if KEI_LOCAL.exists() and KEI_LOCAL.stat().st_size > 0:
+        return str(KEI_LOCAL)
+    _download_blob_to(KEI_LOCAL, MODELS_BUCKET, "kei_booster.pkl")
+    return str(KEI_LOCAL)
+
+@st.cache_resource(show_spinner="Fetching main_model…")
+def download_main_model_dir() -> str:
+    client = _gcs_client()
+    bucket = client.bucket(MODELS_BUCKET)
+    dest_dir = Path("/tmp/main_model")
+    for blob in bucket.list_blobs(prefix=MAIN_MODEL_PREFIX):
         if blob.name.endswith("/"):
             continue
-        rel_path = blob.name[len(prefix):].lstrip("/")
-        local_path = Path(destination_dir) / rel_path
+        rel = blob.name[len(MAIN_MODEL_PREFIX):].lstrip("/")
+        local_path = dest_dir / rel
         local_path.parent.mkdir(parents=True, exist_ok=True)
         blob.download_to_filename(str(local_path))
-
-    return destination_dir
-
-# Trigger download
-download_main_model()
+    return str(dest_dir)
 
 # -----------------------------
-# citizen_complain_app/inference_wrapper.py
-
-import os
-import pickle
-import requests
-
-from citizen_complain_app.model_core import run_classifier, KEIBooster
-
-# Step 1: Resolve the KEI booster path (download from GCS if needed)
-def _find_kei_booster_path():
-    booster_url = os.getenv("KEI_BOOSTER_URL")
-    local_path = os.getenv("KEI_BOOSTER_PATH", "/tmp/kei_booster.pkl")
-
-    if os.path.exists(local_path) and os.path.getsize(local_path) > 0:
-        return local_path
-
-    # Download from GCS
-    try:
-        r = requests.get(booster_url, timeout=30)
-        r.raise_for_status()
-        with open(local_path, "wb") as f:
-            f.write(r.content)
-        return local_path
-    except Exception as e:
-        raise RuntimeError(f"Failed to fetch KEI booster from {booster_url}: {e}")
-
-_LOCAL_KEI = _find_kei_booster_path()
-
-# Step 2: Load and run inference using the booster
-def run_full_inference(text):
-    with open(_LOCAL_KEI, "rb") as f:
-        kei_booster = pickle.load(f)
-
-    if not isinstance(kei_booster, KEIBooster):
-        raise RuntimeError("KEI booster not loaded correctly.")
-
-    return run_classifier(text, kei_booster)
+# 2) Ensure artifacts BEFORE import
+# -----------------------------
+os.environ["KEI_BOOSTER_PATH"] = ensure_kei_booster()
+download_main_model_dir()
 
 # -----------------------------
-# 3. Import model_core and patch its KEI_PKL
+# 3) Import model_core AFTER paths exist
 # -----------------------------
-from citizen_complain_app import model_core as mc
+import citizen_complain_app.model_core as mc
 
+# Force model_core to use the resolved KEI file (in case it has a KEI_PKL default)
 try:
-    mc.KEI_PKL = Path(_LOCAL_KEI)
+    mc.KEI_PKL = Path(os.environ["KEI_BOOSTER_PATH"])
 except Exception:
     pass
 
 # -----------------------------
-# 4. Main run functions
+# 4) Public API
 # -----------------------------
-def run_full_inference(text: str, k_sim: int = 5) -> Dict[str, Any]:
+def run_full_inference(text: str, k_sim: int = 5):
     return mc.run_full_inference(text, k_sim=k_sim)
 
-def run_full_inference_legacy(text: str, k_sim: int = 5) -> Dict[str, Any]:
+def run_full_inference_legacy(text: str, k_sim: int = 5):
     out_v2 = mc.run_full_inference(text, k_sim=k_sim)
-    keywords = out_v2.get("keywords") or []
-    router = out_v2.get("extra", {}).get("router", {}) or {}
-    dept = router.get("상위부서") or out_v2.get("department") or "공통확인"
-    subdept = router.get("부서") or out_v2.get("subdepartment") or "공통확인"
-    intent_val = router.get("의도") or out_v2.get("intents", {}).get("의도") or "미정"
+    # … keep your legacy post-processing here if needed …
+    return out_v2
 
-    def _urgency_label(norm): return "매우높음" if norm >= 0.75 else "높음" if norm >= 0.5 else "보통" if norm >= 0.25 else "낮음"
-    def _emotion_label(norm): return "불만" if norm is not None and norm >= 0.6 else "중립"
-
-    pr = out_v2.get("extra", {}).get("priority")
-    urg = _urgency_label(pr.get("urgency_norm")) if pr else "보통"
-    emo = _emotion_label(pr.get("emotion_norm")) if pr else "중립"
-
-    cause = out_v2.get("extra", {}).get("cause", {})
-    if "sentence" not in cause and hasattr(mc, "format_cause_sentence"):
-        cause["sentence"] = mc.format_cause_sentence(cause)
-
-    return {
-        "keywords": keywords or ["공통확인"],
-        "intents": {"공통확인": 1.0} if intent_val == "미정" else {intent_val: 1.0},
-        "department": dept,
-        "subdepartment": subdept,
-        "urgency": urg,
-        "emotion": emo,
-        "model_version": "trial_main_model_only",
-        "extra": {
-            "priority": pr,
-            "cause": cause,
-            "similar": out_v2.get("extra", {}).get("similarity", []),
-            "router": router,
-        },
-    }
-
-__all__ = [
-    "run_full_inference",
-    "run_full_inference_legacy",
-]
+__all__ = ["run_full_inference", "run_full_inference_legacy"]
