@@ -192,12 +192,5 @@ import streamlit as st
 from pathlib import Path
 from citizen_complain_app import model_core
 
-st.write("🔎 Debug")
-st.code(f"BASE_DIR: {model_core.BASE_DIR}")
-p = model_core.KEI_PKL
-st.code(f"KEI_PKL default: {p}")
-st.code(f"KEI_BOOSTER_PATH env: {os.getenv('KEI_BOOSTER_PATH')}")
-st.code(f"KEI_BOOSTER_URL env: {os.getenv('KEI_BOOSTER_URL')}")
-st.write("kei_booster.pkl exists? ", Path(p).exists())
-if Path(p).exists():
-    st.write("size(bytes): ", Path(p).stat().st_size)
+print("[DEBUG] KEI_BOOSTER_URL:", os.getenv("KEI_BOOSTER_URL"))
+print("[DEBUG] KEI_BOOSTER_PATH:", os.getenv("KEI_BOOSTER_PATH"))
