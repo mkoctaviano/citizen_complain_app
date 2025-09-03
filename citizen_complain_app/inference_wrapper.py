@@ -154,103 +154,158 @@ def _apply_path_overrides(mc, base_tmp: Path, kei_dest: Path) -> None:
 # =============================
 # Cached bootstrap + import
 # =============================
+
+# Always define module globals so callers can import safely
+_mc: Optional[object] = None
+_init_error: Optional[BaseException] = None
+
 def _bootstrap_and_import_uncached():
+    """Attempt to import model_core and apply path overrides once."""
     paths = bootstrap_models()
     base_tmp = paths["base_tmp"]
     kei_dest = paths["kei_path"]
-    import citizen_complain_app.model_core as mc
-    _apply_path_overrides(mc, base_tmp, kei_dest)
 
-    # 🔸 full warmup: hit all submodels once
+    import citizen_complain_app.model_core as _mc_local
+    _apply_path_overrides(_mc_local, base_tmp, kei_dest)
+
+    # Optional warmup (safe best-effort)
     try:
-        _ = mc.classify("간단한 워밍업 문장입니다.")
+        _ = _mc_local.classify("워밍업 문장입니다.")
         try:
-            booster, p_tok, p_mdl, p_classes, c_map = mc._router_artifacts()
+            booster, p_tok, p_mdl, p_classes, c_map = _mc_local._router_artifacts()
             if p_classes:
                 demo_parent = p_classes[0]
                 c_path = c_map.get(demo_parent)
                 if c_path:
-                    _ = mc.predict_child_topk(c_path, "워밍업 문장", k=1)
+                    _ = _mc_local.predict_child_topk(c_path, "버스 정류장이 파손됐어요", k=1)
+        except Exception:
+            pass
+        try: _ = _mc_local.run_cause("보도블럭 파손으로 보행이 불편합니다.")
         except Exception: pass
-        try: _ = mc.run_cause("버스 정류장 파손으로 불편합니다.") 
+        try: _ = _mc_local.retriever_search("가로등 고장 신고", k=1)
         except Exception: pass
-        try: _ = mc.retriever_search("가로등 고장 신고", k=1)
-        except Exception: pass
-        try: _ = mc.predict_priority_single("민원 처리 지연으로 불만이 큽니다.")
+        try: _ = _mc_local.predict_priority_single("민원 처리 지연")
         except Exception: pass
     except Exception as e:
+        # Warmup failing shouldn't block import
         print("[warmup skipped]", e)
-    return mc
 
+    return _mc_local
+
+# A cached getter that never throws at import time
 if HAS_ST:
     @st.cache_resource(show_spinner="Initializing models… (first time only)")
-    def _bootstrap_and_import():
+    def _cached_loader():
         return _bootstrap_and_import_uncached()
-    mc = _bootstrap_and_import()
 else:
-    mc = _bootstrap_and_import_uncached()
+    def _cached_loader():
+        return _bootstrap_and_import_uncached()
+
+def _ensure_mc():
+    """Ensure _mc is initialized or capture the init error; never raise here."""
+    global _mc, _init_error
+    if _mc is not None or _init_error is not None:
+        return
+    try:
+        _mc = _cached_loader()
+    except BaseException as e:
+        _init_error = e
+
+# Try to initialize once at import, but swallow failures so imports succeed
+try:
+    _ensure_mc()
+except Exception as e:
+    _init_error = e
 
 # =============================
-# Public API
+# Public API (always defined)
 # =============================
+
 def run_full_inference(text: str, k_sim: int = 5, fast: bool = False):
+    """
+    Stable entrypoint. Always importable.
+    If models failed to init, returns an error-shaped payload instead of raising ImportError.
+    """
+    _ensure_mc()
+    if _mc is None:
+        # Return a friendly error object so the UI can render something graceful
+        return {
+            "keywords": [],
+            "intents": {"의도": "미정"},
+            "department": "",
+            "subdepartment": "",
+            "urgency": None,
+            "emotion": None,
+            "model_version": "chatbot_v1",
+            "error": {
+                "type": "init_failure",
+                "message": "모델 초기화에 실패했습니다. 로그를 확인하세요.",
+                "detail": str(_init_error) if _init_error else "",
+            },
+            "extra": {"router": {}, "cause": {"cause_span": "", "cause_score": 0.0}, "similarity": [], "priority": None},
+        }
+
+    # Delegate to real implementation
     try:
-        return mc.run_full_inference(text, k_sim=k_sim, fast=fast)
+        return _mc.run_full_inference(text, k_sim=k_sim, fast=fast)  # newer signature
     except TypeError:
-        return mc.run_full_inference(text, k_sim=k_sim)
-
-def _heuristic_emotion_label(emotion_norm: Optional[float]) -> str:
-    if emotion_norm is None: return "중립"
-    return "불만" if emotion_norm >= 0.6 else "중립"
-
-def _urgency_label_from_norm(urg_norm: Optional[float]) -> str:
-    if urg_norm is None: return "보통"
-    if urg_norm >= 0.75: return "매우높음"
-    if urg_norm >= 0.50: return "높음"
-    if urg_norm >= 0.25: return "보통"
-    return "낮음"
-
-def _kw_vote_reasons(keywords: List[str]) -> List[str]:
-    reasons: List[str] = []
-    try:
-        csv_path = getattr(mc, "CSV_PATH", None)
-        if csv_path:
-            kw_votes = mc.load_kw_votes(csv_path)
-            if keywords:
-                votes = Counter()
-                for kw in keywords:
-                    for dept, c in kw_votes.get(kw, {}).items():
-                        votes[dept] += c
-                if votes:
-                    tot = sum(votes.values())
-                    top2 = votes.most_common(2)
-                    if len(top2) == 1 or (top2[0][1] - top2[1][1]) / max(tot, 1) < 0.15:
-                        reasons.append("kw vote conflict")
-    except Exception:
-        pass
-    return reasons
+        return _mc.run_full_inference(text, k_sim=k_sim)             # legacy signature
 
 def run_full_inference_legacy(text: str, k_sim: int = 5):
+    """Older output shape, but never raises on import/init failure."""
     out_v2 = run_full_inference(text, k_sim=k_sim)
+    # If init failed above, just return the error payload as-is
+    if out_v2.get("error"):
+        return out_v2
+
     keywords   = out_v2.get("keywords") or []
     router     = out_v2.get("extra", {}).get("router", {}) or {}
     dept       = router.get("상위부서") or out_v2.get("department") or "공통확인"
     subdept    = router.get("부서") or out_v2.get("subdepartment") or "공통확인"
     intent_val = router.get("의도") or out_v2.get("intents", {}).get("의도") or "미정"
-    reasons = _kw_vote_reasons(keywords)
+
+    # helper mappers (safe even if _mc is None because we reached here only on success)
+    reasons = []
+    try:
+        csv_path = getattr(_mc, "CSV_PATH", None)
+        if csv_path and keywords:
+            kw_votes = _mc.load_kw_votes(csv_path)
+            from collections import Counter as _Counter
+            votes = _Counter()
+            for kw in keywords:
+                for dept2, c in kw_votes.get(kw, {}).items():
+                    votes[dept2] += c
+            if votes:
+                tot = sum(votes.values())
+                top2 = votes.most_common(2)
+                if len(top2) == 1 or (top2[0][1] - top2[1][1]) / max(tot, 1) < 0.15:
+                    reasons.append("kw vote conflict")
+    except Exception:
+        pass
+
     pr = out_v2.get("extra", {}).get("priority")
     urg_norm = pr.get("urgency_norm") if pr else None
     emo_norm = pr.get("emotion_norm") if pr else None
+    def _heuristic_emotion_label(s): return "중립" if s is None else ("불만" if s >= 0.6 else "중립")
+    def _urgency_label_from_norm(s):
+        if s is None: return "보통"
+        if s >= 0.75: return "매우높음"
+        if s >= 0.50: return "높음"
+        if s >= 0.25: return "보통"
+        return "낮음"
+
     urgency_txt = _urgency_label_from_norm(urg_norm)
     emotion_txt = _heuristic_emotion_label(emo_norm)
     similar = out_v2.get("extra", {}).get("similarity", [])
     intents_dict = {"공통확인": 1.0} if intent_val in ("", None, "미정") else {intent_val: 1.0}
+
     cause = out_v2.get("extra", {}).get("cause", {}) or {}
     try:
-        if "sentence" not in cause and hasattr(mc, "format_cause_sentence"):
-            cause["sentence"] = mc.format_cause_sentence(cause)
+        if "sentence" not in cause and _mc and hasattr(_mc, "format_cause_sentence"):
+            cause["sentence"] = _mc.format_cause_sentence(cause)
     except Exception:
         pass
+
     return {
         "keywords": keywords or ["공통확인"],
         "intents": intents_dict,
@@ -274,3 +329,4 @@ def run_full_inference_legacy(text: str, k_sim: int = 5):
     }
 
 __all__ = ["run_full_inference", "run_full_inference_legacy"]
+
