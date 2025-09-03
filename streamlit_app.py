@@ -192,5 +192,3 @@ import streamlit as st
 from pathlib import Path
 from citizen_complain_app import model_core
 
-print("[DEBUG] KEI_BOOSTER_URL:", os.getenv("KEI_BOOSTER_URL"))
-print("[DEBUG] KEI_BOOSTER_PATH:", os.getenv("KEI_BOOSTER_PATH"))
