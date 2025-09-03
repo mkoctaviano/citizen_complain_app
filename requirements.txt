@@ -13,14 +13,15 @@ streamlit-aggrid==0.3.4.post3
 streamlit-mic-recorder>=0.0.8
 pydub>=0.25.1
 protobuf~=4.25.3
-sentence-transformers==2.2.2
-rapidfuzz==3.9.6
 
 
 # ML dependencies
 torch==2.3.0
 transformers==4.41.1
 sentencepiece>=0.1.99
+sentence-transformers==2.6.1      # ← upgrade (or newer, 2.6.x)
+rapidfuzz==3.9.6   
+
 
 
 
