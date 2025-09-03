@@ -80,7 +80,25 @@ section[data-testid="stChatInput"] textarea:focus{
 }
 </style>
 """, unsafe_allow_html=True)
-
+# --- ✅ success 박스 전용 CSS ---
+st.markdown("""
+<style>
+#ready-to-submit + div[data-testid="stAlert"]{
+  background:#ffffff !important;
+  color:#0B2F59 !important;
+  border:2px solid #D8E3F6 !important;
+  border-radius:12px !important;
+  box-shadow:0 6px 18px rgba(11,47,89,.06);
+}
+#ready-to-submit + div[data-testid="stAlert"] [data-testid="stMarkdownContainer"] p{
+  color:#0B2F59 !important;
+}
+#ready-to-submit + div[data-testid="stAlert"] svg{
+  color:#0B2F59 !important; 
+  fill:#0B2F59 !important;
+}
+</style>
+""", unsafe_allow_html=True)
 
 # ---------------- Session state init ----------------
 if "chat_history" not in st.session_state:
@@ -230,6 +248,7 @@ else:
 
 # ---------------- Final submission button ----------------
 if st.session_state.get("ready_to_submit") and not st.session_state.submitted:
+    st.markdown('<div id="ready-to-submit"></div>', unsafe_allow_html=True)
     st.success("모든 정보가 입력되었습니다. 아래 버튼을 눌러 민원을 최종 제출해 주세요.")
     
     if st.button("민원 제출하기"):
