@@ -87,13 +87,13 @@ st.markdown(
         border:1px solid {BRAND}!important; padding:.65rem 1.2rem!important;
     }}
         /* ✅ 헤더(Row) 안의 자동 박스(테두리/그림자) 제거 */
-    .k-header-row div[data-testid="stVerticalBlockBorderWrapper"] {
+    .k-header-row div[data-testid="stVerticalBlockBorderWrapper"] {{
       background: transparent !important;
       border: none !important;
       box-shadow: none !important;
       padding: 0 !important;
       border-radius: 0 !important;
-    }
+    }}
 
     </style>
     """,
