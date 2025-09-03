@@ -26,16 +26,13 @@ hide_multipage_nav_css()
 
 st.markdown("""
 <style>
-/* 1) Reset ALL Streamlit "bordered wrappers" so they don't add any extra boxes */
+/* Reset ALL bordered wrappers globally */
 div[data-testid="stVerticalBlockBorderWrapper"]{
-  border:none !important;
-  box-shadow:none !important;
-  background:transparent !important;
-  padding:0 !important;
+  border:none !important; box-shadow:none !important; background:transparent !important; padding:0 !important;
 }
 
-/* 2) Style ONLY the chat window:
-      the first bordered container RIGHT AFTER #conv-start */
+/* ---- Chat window outline (scoped) ----
+   Applies ONLY to the first bordered container right after #conv-start */
 #conv-start + div[data-testid="stVerticalBlock"] div[data-testid="stVerticalBlockBorderWrapper"]{
   border:2px solid #D8E3F6 !important;
   border-radius:16px !important;
@@ -43,73 +40,45 @@ div[data-testid="stVerticalBlockBorderWrapper"]{
   background:#fff !important;
   box-shadow:0 4px 14px rgba(11,47,89,.06);
   margin-top:8px;
-  height:auto !important;
-  overflow:visible !important;
 }
 
-/* Remove Streamlit’s default chat bubble look completely */
-[data-testid="stChatMessage"] [data-testid="stChatMessageContent"]{
-  background:transparent !important;
-  border:none !important;
-  box-shadow:none !important;
-  padding:0 !important;
+/* Remove Streamlit’s default chat “bubble” + any row/card backgrounds */
+[data-testid="stChatMessage"]{ background:transparent !important; box-shadow:none !important; margin:6px 0 !important; gap:4px !important; align-items:flex-end; }
+[data-testid="stChatMessage"] [data-testid="stChatMessageContent"]{ background:transparent !important; border:none !important; box-shadow:none !important; padding:0 !important; }
+/* Kill the light gray rounded stripe behind the message column */
+[data-testid="stChatMessage"] > div:not([data-testid="stChatMessageAvatar"]){
+  background:transparent !important; box-shadow:none !important; border:none !important; padding:0 !important; border-radius:0 !important;
 }
 
-/* Text-only bubbles */
+/* ---- Text-only bubbles ---- */
 .bubble{
-  display:inline-block;
-  max-width:70%;
-  border-radius:12px;
-  padding:8px 12px;
-  margin:2px 0;
-  line-height:1.45;
-  white-space:pre-wrap;
-  overflow-wrap:anywhere;
-  word-break:break-word;
+  display:inline-block; max-width:70%;
+  border-radius:12px; padding:8px 12px; margin:2px 0; line-height:1.45;
+  white-space:pre-wrap; overflow-wrap:anywhere; word-break:break-word;
 }
 
-/* Assistant (left) */
-[data-testid="stChatMessage"]:has(.bubble.assistant){
-  flex-direction:row !important;
-  justify-content:flex-start !important;
-}
+/* Assistant: left aligned */
+[data-testid="stChatMessage"]:has(.bubble.assistant){ flex-direction:row !important; justify-content:flex-start !important; }
 .bubble.assistant{ background:#E9F2FF; color:#111; }
 
-/* User (right, brand blue) */
-[data-testid="stChatMessage"]:has(.bubble.user){
-  flex-direction:row-reverse !important;
-  justify-content:flex-end !important;
-}
+/* User: right aligned, tight gap */
+[data-testid="stChatMessage"]:has(.bubble.user){ flex-direction:row-reverse !important; justify-content:flex-end !important; }
 .bubble.user{ background:#0B2F59; color:#fff; }
 
-/* Spacing & avatars */
-[data-testid="stChatMessage"]{ gap:6px !important; margin:6px 0 !important; align-items:flex-end; }
+/* Avatar size */
 [data-testid="stChatMessageAvatar"] img{ width:32px; height:32px; border-radius:50%; }
 
-/* Input docked (keeps the red focus off; optional brand focus below) */
+/* Input docked to window */
 section[data-testid="stChatInput"]{
   border-top:1px solid #D8E3F6; margin-top:-10px; padding:12px;
   border-radius:0 0 16px 16px; background:#fff; max-width:100%;
 }
+/* Optional: brand focus for input */
 section[data-testid="stChatInput"] textarea:focus{
-  outline:none !important;
-  box-shadow:0 0 0 2px #0B2F59 !important;
-  border-color:#0B2F59 !important;
-}
-/* Remove Streamlit's gray row background/shadow for user messages */
-[data-testid="stChatMessage"][data-testid="user"] {
-  background: transparent !important;
-  box-shadow: none !important;
-}
-/* Tighten gap between bubble and avatar */
-[data-testid="stChatMessage"] {
-  gap: 4px !important;  /* reduce space between avatar & bubble */
-  margin: 6px 0 !important;
-  align-items: flex-end;
+  outline:none !important; box-shadow:0 0 0 2px #0B2F59 !important; border-color:#0B2F59 !important;
 }
 </style>
 """, unsafe_allow_html=True)
-
 
 # ---------------- Session state init ----------------
 if "chat_history" not in st.session_state:
@@ -178,16 +147,16 @@ if not st.session_state.chat_history:
     bot_say(STEPS[0]["prompt"])
 
 # ---------------- Render chat history ----------------
-from html import escape
+ffrom html import escape
 
-# marker so we can target only the next bordered container
+# marker so the CSS can target just this chat window
 st.markdown('<div id="conv-start"></div>', unsafe_allow_html=True)
 
-chat_box = st.container(border=True)  # <- the only thing we want outlined
+chat_box = st.container(border=True)  # outlined window
 with chat_box:
     for m in st.session_state.chat_history:
         role = "assistant" if m["role"] == "assistant" else "user"
-        with st.chat_message(role):
+        with st.chat_message(role):  # (add avatar="icons/robot-blue.svg" if you want)
             text = escape(m["content"]).replace("\n", "<br>")
             st.markdown(f'<div class="bubble {role}">{text}</div>', unsafe_allow_html=True)
 
