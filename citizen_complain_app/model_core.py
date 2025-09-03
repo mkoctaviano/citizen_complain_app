@@ -386,18 +386,19 @@ def classify_with_router(booster, parent_tok, parent_mdl, parent_classes, child_
         }
 
     # Step 8: All confident → return both
-    return {
-        "텍스트": text,
-        "키워드Top": keywords,
-        "의도": intent,
-        "상위부서": f"{p_label} ({p_prob:.2f})",
-        "부서": f"{c_label} ({c_prob:.2f})",
-        "상위부서_후보TopK": [],
-        "부서_후보TopK": [],
-        "상위부서Top2": [f"{l} ({p:.2f})" for l, p in zip(p_labs[:2], p_probs[:2])],
-        "input_final": inp,
-        "공통확인_사유": "",
-    }
+        c_labs, c_probs, _, _ = predict_child_topk(c_path, inp, k=cfg.child_topk)
+        return {
+            "텍스트": text,
+            "키워드Top": keywords,
+            "의도": intent,
+            "상위부서": f"{p_label} ({p_prob:.2f})",
+            "부서": f"{c_label} ({c_prob:.2f})",
+            "상위부서_후보TopK": [f"{l} ({p:.2f})" for l, p in zip(p_labs, p_probs)],
+            "부서_후보TopK": [f"{l} ({p:.2f})" for l, p in zip(c_labs, c_probs)],
+            "상위부서Top2": [f"{l} ({p:.2f})" for l, p in zip(p_labs[:2], p_probs[:2])],
+            "input_final": inp,
+            "공통확인_사유": "",
+        }
 
 @cache_resource(show_spinner=False)
 def _router_artifacts():
