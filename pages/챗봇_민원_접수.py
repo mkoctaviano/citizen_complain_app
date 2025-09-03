@@ -26,27 +26,36 @@ hide_multipage_nav_css()
 
 st.markdown("""
 <style>
-/* Outer outline */
+/* 1) Reset ALL Streamlit "bordered wrappers" so they don't add any extra boxes */
 div[data-testid="stVerticalBlockBorderWrapper"]{
-  border:2px solid #D8E3F6!important;
-  border-radius:16px!important;
-  padding:16px!important;
-  background:#fff!important;
+  border:none !important;
+  box-shadow:none !important;
+  background:transparent !important;
+  padding:0 !important;
+}
+
+/* 2) Style ONLY the chat window:
+      the first bordered container RIGHT AFTER #conv-start */
+#conv-start + div[data-testid="stVerticalBlock"] div[data-testid="stVerticalBlockBorderWrapper"]{
+  border:2px solid #D8E3F6 !important;
+  border-radius:16px !important;
+  padding:16px !important;
+  background:#fff !important;
   box-shadow:0 4px 14px rgba(11,47,89,.06);
   margin-top:8px;
-  height:auto!important;
-  overflow:visible!important;
+  height:auto !important;
+  overflow:visible !important;
 }
 
-/* --- Remove Streamlit default chat message outline --- */
-[data-testid="stChatMessage"] [data-testid="stChatMessageContent"] {
-  background: transparent !important;
-  border: none !important;
-  box-shadow: none !important;
-  padding: 0 !important;
+/* Remove Streamlit’s default chat bubble look completely */
+[data-testid="stChatMessage"] [data-testid="stChatMessageContent"]{
+  background:transparent !important;
+  border:none !important;
+  box-shadow:none !important;
+  padding:0 !important;
 }
 
-/* Bubble wrapper */
+/* Text-only bubbles */
 .bubble{
   display:inline-block;
   max-width:70%;
@@ -54,71 +63,41 @@ div[data-testid="stVerticalBlockBorderWrapper"]{
   padding:8px 12px;
   margin:2px 0;
   line-height:1.45;
+  white-space:pre-wrap;
+  overflow-wrap:anywhere;
+  word-break:break-word;
 }
 
-/* Assistant (left, light blue) */
+/* Assistant (left) */
 [data-testid="stChatMessage"]:has(.bubble.assistant){
-  flex-direction:row!important; justify-content:flex-start!important;
+  flex-direction:row !important;
+  justify-content:flex-start !important;
 }
-/* --- Assistant bubble (flat, light blue) --- */
-.bubble.assistant {
-  background: #E9F2FF;
-  color: #111;
-  border-radius: 12px;
-  padding: 8px 12px;
-  margin: 2px 0;
-  display: inline-block;
-  max-width: 70%;
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
-  word-break: break-word;
-  box-shadow: none; /* no shadow */
-}
+.bubble.assistant{ background:#E9F2FF; color:#111; }
 
 /* User (right, brand blue) */
 [data-testid="stChatMessage"]:has(.bubble.user){
-  flex-direction:row-reverse!important; justify-content:flex-end!important;
+  flex-direction:row-reverse !important;
+  justify-content:flex-end !important;
 }
-/* --- User bubble (flat, brand blue) --- */
-.bubble.user {
-  background: #0B2F59;
-  color: #fff;
-  border-radius: 12px;
-  padding: 8px 12px;
-  margin: 2px 0;
-  display: inline-block;
-  max-width: 70%;
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
-  word-break: break-word;
-  box-shadow: none; /* no shadow */
-}
+.bubble.user{ background:#0B2F59; color:#fff; }
 
-/* Layout tweaks */
-[data-testid="stChatMessage"]{
-  gap:6px!important;
-  margin:6px 0!important;
-  align-items:flex-end;
-}
+/* Spacing & avatars */
+[data-testid="stChatMessage"]{ gap:6px !important; margin:6px 0 !important; align-items:flex-end; }
+[data-testid="stChatMessageAvatar"] img{ width:32px; height:32px; border-radius:50%; }
 
-/* Avatar size */
-[data-testid="stChatMessageAvatar"] img{
-  width:32px; height:32px; border-radius:50%;
-}
-
-/* Input docked */
+/* Input docked (keeps the red focus off; optional brand focus below) */
 section[data-testid="stChatInput"]{
-  border-top:1px solid #D8E3F6;
-  margin-top:-10px;
-  padding:12px;
-  border-radius:0 0 16px 16px;
-  background:#fff;
-  max-width:100%;
+  border-top:1px solid #D8E3F6; margin-top:-10px; padding:12px;
+  border-radius:0 0 16px 16px; background:#fff; max-width:100%;
+}
+section[data-testid="stChatInput"] textarea:focus{
+  outline:none !important;
+  box-shadow:0 0 0 2px #0B2F59 !important;
+  border-color:#0B2F59 !important;
 }
 </style>
 """, unsafe_allow_html=True)
-
-
 
 
 # ---------------- Session state init ----------------
@@ -187,11 +166,13 @@ def user_say(msg: str):
 if not st.session_state.chat_history:
     bot_say(STEPS[0]["prompt"])
 
-
 # ---------------- Render chat history ----------------
 from html import escape
 
-chat_box = st.container(border=True)
+# marker so we can target only the next bordered container
+st.markdown('<div id="conv-start"></div>', unsafe_allow_html=True)
+
+chat_box = st.container(border=True)  # <- the only thing we want outlined
 with chat_box:
     for m in st.session_state.chat_history:
         role = "assistant" if m["role"] == "assistant" else "user"
