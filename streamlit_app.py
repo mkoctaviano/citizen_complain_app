@@ -191,6 +191,5 @@ import os
 from pathlib import Path
 import streamlit as st
 
-path = os.getenv("KEI_BOOSTER_PATH", "/tmp/kei_booster.pkl")
-st.write("KEI_BOOSTER_PATH:", path)
-st.write("Exists?", Path(path).exists())
+
+
