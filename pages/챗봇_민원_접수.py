@@ -28,6 +28,16 @@ hide_multipage_nav_css()
 
 st.markdown("""
 <style>
+/* 사용자 메시지 말풍선 너비 확장 */
+.stChatMessage.user {
+    max-width: 90% !important;
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+</style>
+""", unsafe_allow_html=True)
+<style>
 /* Chat window outline (scoped only to the container after #conv-start) */
 #conv-start + div[data-testid="stVerticalBlock"] div[data-testid="stVerticalBlockBorderWrapper"]{
   border:2px solid #D8E3F6 !important;
