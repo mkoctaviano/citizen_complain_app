@@ -270,7 +270,7 @@ gb.configure_column("접수일시", width=160, cellStyle=center_style)
 gb.configure_column(
     "내용",
     flex=1, minWidth=360,
-    wrapText=True, autoHeight=True,
+    wrapText=True,
     tooltipField="내용"
 )
 
