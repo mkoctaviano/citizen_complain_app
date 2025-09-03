@@ -14,7 +14,7 @@ import utils.env  # ensures .env is loaded
 from utils.voice import record_voice, transcribe_google
 from utils.ui import hide_multipage_nav_css
 from storage import init_db, 민원_등록
-from model_core import run_full_inference
+from citizen_complain_app.model_core import run_full_inference
 
 # ---------------- Page config ----------------
 st.set_page_config(
