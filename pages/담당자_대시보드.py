@@ -69,7 +69,21 @@ st.markdown("""
 
 # Hide the default multipage sidebar navigation
 hide_multipage_nav_css()
+st.markdown("""
+<style>
+/* "민원 검색" 라벨 크게 */
+label[data-testid="stWidgetLabel"] p {
+    font-size: 20px !important;
+    font-weight: 700 !important;
+    color: #0B2F59 !important;
+}
 
+/* 검색 입력창 폭 절반으로 제한 */
+div[data-testid="stTextInput"] {
+    max-width: 50% !important;
+}
+</style>
+""", unsafe_allow_html=True)
 # Top nav: back to Home
 if st.button("🏠 홈으로"):
     st.switch_page("streamlit_app.py")  # filename of the page script
