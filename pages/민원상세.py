@@ -163,12 +163,12 @@ def render_cause_block(cause: Optional[Dict]):
 
     # ⬇️ 핵심 구간 intentionally hidden in UI
     # (still exists in cause_span variable for CSV or backend use)
-    # with st.expander("🔎 핵심 구간 (internal)"):
+    # with st.expander(" 핵심 구간 (internal)"):
     #     st.code(cause_span, language="text")
 
 
 def render_similar_block(similar: List[Dict], limit: int = 10):
-    st.markdown("## 🔁 유사 민원")
+    st.markdown("##  유사 민원 TOP 5")
     if not similar:
         st.info("유사 민원 검색 결과가 없습니다.")
         return
@@ -249,9 +249,9 @@ with c4:
 st.markdown("## 분류 결과")
 r1, r2, r3, r4 = st.columns([1, 1, 1, 1])
 with r1:
-    st.markdown(f'<div class="info-line">부서 : {row.get("부서", "")}</div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="info-line">상위부서 : {row.get("상위부서", "")}</div>', unsafe_allow_html=True)
 with r2:
-    st.markdown(f'<div class="info-line">세부분야 : {row.get("세부분야", "")}</div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="info-line">하위부서 : {row.get("하위부서", "")}</div>', unsafe_allow_html=True)
 with r3:
     st.markdown(f'<div class="info-line">긴급도 : {row.get("긴급도", "")}</div>', unsafe_allow_html=True)
 with r4:
