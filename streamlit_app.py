@@ -187,3 +187,7 @@ with c2:
                 _goto("pages/담당자_대시보드.py")
             else:
                 st.error("비밀번호가 올바르지 않습니다.")
+
+print("[DEBUG] BASE_DIR:", BASE_DIR)
+print("[DEBUG] KEI exists?", (_resolve_kei_pkl().exists()))
+print("[DEBUG] KEI path:", _resolve_kei_pkl())
