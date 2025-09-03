@@ -81,10 +81,10 @@ import time, streamlit as st
 
 time.sleep(3)
 try:
-    st.switch_page("pages/챗봇_민원_접수.py")  # ← use the exact filename you want
+    st.switch_page("streamlit_app.py")  # ← use the exact filename you want
 except Exception:
     st.warning("자동 이동에 실패했습니다. 아래 버튼을 눌러 이동하세요.")
     if st.button("🏠 홈으로 이동"):
-        st.switch_page("pages/첫봇_민원_접수.py")
+        st.switch_page("streamlit_app.py")
     st.stop()
 
