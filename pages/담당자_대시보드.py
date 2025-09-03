@@ -1,9 +1,6 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[1]:
-
-
 # pages/2_담당자_대시보드.py
 import os
 import json
@@ -18,49 +15,55 @@ from utils.ui import hide_multipage_nav_css
 # ---------- page config FIRST ----------
 st.set_page_config(page_title="담당자 대시보드", page_icon="", layout="wide")
 
+# ===== 모던(Alpine) 테마 스타일 =====
 st.markdown("""
 <style>
+/* Alpine 기반 라이트 톤 + 라운드 + 그림자 */
+.ag-theme-alpine {
+  --ag-foreground-color: #111827;
+  --ag-background-color: #ffffff;
+  --ag-header-background-color: #f8fafc;
+  --ag-border-color: #e5e7eb;
+  --ag-row-hover-color: #f1f5f9;
+  --ag-selected-row-background-color: #eff6ff;
+  --ag-font-size: 13px;
+  --ag-cell-horizontal-padding: 10px;
+  border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(17,24,39,.06);
+}
+
+/* 헤더 타이포 + 가운데 정렬 + sticky */
+.ag-theme-alpine .ag-header-cell-label {
+  font-weight: 700;
+  justify-content: center;
+}
+.ag-theme-alpine .ag-header {
+  position: sticky; top: 0; z-index: 2;
+}
+
+/* zebra, hover, selected */
+.ag-theme-alpine .ag-row-odd { background: #fbfdff; }
+.ag-theme-alpine .ag-row-hover .ag-cell { background:#f5f8fd !important; }
+.ag-theme-alpine .ag-row.ag-row-selected .ag-cell { background:#eef6ff !important; }
+
+/* 셀 경계선 은은하게 */
+.ag-theme-alpine .ag-cell { border-right: 1px solid #eef1f5; }
+
+/* 긴 텍스트 2줄까지 표시(필요시 1로 바꾸면 됨) */
+.ag-theme-alpine .ag-cell.ag-cell-wrap-text{
+  display:-webkit-box; -webkit-box-orient:vertical;
+  -webkit-line-clamp:2; overflow:hidden;
+}
+
 /* 마우스 포인터 */
-.ag-theme-balham .ag-row { cursor: pointer; }
-
-/* ✅ 컬럼 헤더: 글자 크게 + 굵게 + 가운데 정렬 */
-.ag-theme-balham .ag-header-cell-label {
-    font-size: 16px !important;
-    font-weight: 700 !important;
-    justify-content: center !important;   /* 헤더 텍스트 중앙 */
-}
-
-/* ✅ 본문 셀: 헤더보다 살짝 작게 */
-.ag-theme-balham .ag-cell {
-    font-size: 14px !important;
-    line-height: 1.35 !important;
-    padding-top: 6px !important;
-    padding-bottom: 6px !important;
-}
-
-/* ✅ 행 hover 시 약한 배경 */
-.ag-theme-balham .ag-row-hover {
-    background-color: #f7f9fc !important;
-}
-
-/* ✅ 짙은 구분선 */
-.ag-theme-balham .ag-root-wrapper, 
-.ag-theme-balham .ag-header, 
-.ag-theme-balham .ag-row {
-    border-color: #e5e7eb !important;
-}
+.ag-theme-alpine .ag-row { cursor: pointer; }
 </style>
 """, unsafe_allow_html=True)
-
-
 
 # Hide the default multipage sidebar navigation
 hide_multipage_nav_css()
 
 # Top nav: back to Home
-import streamlit as st
-
-# Only works inside multipage apps
 if st.button("🏠 홈으로"):
     st.switch_page("streamlit_app.py")  # filename of the page script
 
@@ -214,7 +217,6 @@ def build_human_export_df(df: pd.DataFrame) -> pd.DataFrame:
     out["원인 문장"] = cause_sentences
     out["핵심 구간"] = cause_spans
 
-    # Optional: order columns explicitly
     cols = ["민원번호","이름","연락처","주소","내용","부서","세부분야","긴급도","감정","상태",
             "접수일시","처리일시","접수경로","원인 문장","핵심 구간"]
     out = out[[c for c in cols if c in out.columns]]
@@ -251,29 +253,38 @@ main_df = (
 )
 main_df["접수일시"] = main_df["접수일시"].apply(convert_timestamp)
 
-# ---------- grid (custom widths & flex) ----------
+# ---------- grid (modern options) ----------
 gb = GridOptionsBuilder.from_dataframe(main_df)
 
-# default behavior
-gb.configure_default_column(resizable=True, sortable=True, filter=True)
+# 기본 컬럼: 리사이즈/정렬/필터 + 플로팅 필터
+gb.configure_default_column(resizable=True, sortable=True, filter=True, floatingFilter=True)
 
-# manual widths so columns aren't even; let "내용" flex-fill
-gb.configure_column("민원번호", width=100)
-gb.configure_column("이름", width=120)
-gb.configure_column("부서", width=150)
-gb.configure_column("접수일시", width=160)
-gb.configure_column("내용", flex=1, minWidth=300)
+# 수동 너비 + 정렬/스타일 + 고정열
+center_style = {"justifyContent":"center", "display":"flex"}
+gb.configure_column("민원번호", width=100, pinned="left", cellStyle={"fontWeight":"700"})
+gb.configure_column("이름", width=120, cellStyle=center_style)
+gb.configure_column("부서", width=150, cellStyle=center_style)
+gb.configure_column("접수일시", width=160, cellStyle=center_style)
 
-# selection + double-click -> select row
+# 내용: flex-fill + 줄바꿈 + 자동 높이 + 툴팁
+gb.configure_column(
+    "내용",
+    flex=1, minWidth=360,
+    wrapText=True, autoHeight=True,
+    tooltipField="내용"
+)
+
+# 페이지네이션 자동 + 행 애니메이션 + 더블클릭 선택
+gb.configure_pagination(paginationAutoPageSize=True)
 gb.configure_selection(selection_mode="single", use_checkbox=False)
 gb.configure_grid_options(
-    rowHeight=36,
+    rowHeight=40,
+    animateRows=True,
     suppressRowClickSelection=True,
     suppressClickEdit=True,
     onRowDoubleClicked=JsCode(
         """
         function(e){
-            // Double-click selects the row (which triggers SELECTION_CHANGED in Python)
             e.api.deselectAll();
             e.node.setSelected(true);
         }
@@ -281,16 +292,20 @@ gb.configure_grid_options(
     ),
 )
 
+# 상단 빠른 검색
+q = st.text_input("🔎 검색", "", placeholder="이름, 내용, 부서…")
+
 grid_options = gb.build()
+grid_options["quickFilterText"] = q
 
 grid_resp = AgGrid(
     main_df,
     gridOptions=grid_options,
-    height=500,
-    theme="balham",
+    height=500,                 # autoHeight 원하면 이 줄 제거
+    theme="alpine",             # ⬅️ 모던 테마
     allow_unsafe_jscode=True,
     update_mode=GridUpdateMode.SELECTION_CHANGED,
-    fit_columns_on_grid_load=False,   # respect our widths/flex; don't force even fit
+    fit_columns_on_grid_load=False,
 )
 
 # ---------- selection -> detail ----------
@@ -355,7 +370,7 @@ with a1:
             top5,
             gridOptions=gb2.build(),
             height=260,
-            theme="balham",
+            theme="alpine",          # 톤 맞추기
             allow_unsafe_jscode=True,
             update_mode=GridUpdateMode.SELECTION_CHANGED,
             fit_columns_on_grid_load=False,
@@ -413,7 +428,7 @@ with a2:
             .encode(
                 x=alt.X("건수:Q", axis=alt.Axis(title="민원 건수", labelFontSize=12)),
                 y=alt.Y("부서:N", sort="-x", axis=alt.Axis(title=None, labelFontSize=12)),
-                color=alt.Color("부서라벨:N", scale=color_scale, legend=None),  # 범례는 숨김
+                color=alt.Color("부서라벨:N", scale=color_scale, legend=None),
                 tooltip=[
                     alt.Tooltip("부서:N", title="부서"),
                     alt.Tooltip("건수:Q", title="건수"),
@@ -454,15 +469,10 @@ with a2:
             .properties(width=360, height=360, title="부서별 민원 비율")
         )
 
-        # ▶ 나란히 + 범례 강제 노출 (색상 스케일을 독립시켜 범례 숨김 이슈 방지)
         combo = ((bar_chart + bar_text) | pie_chart).resolve_scale(color="independent")
         st.altair_chart(combo, use_container_width=False)
     else:
         st.info("부서 데이터가 없습니다.")
-
-
-
-
 
 # ---------- csv download (human-friendly) ----------
 st.markdown("---")
@@ -474,10 +484,3 @@ st.download_button(
     file_name="complaints_readable.csv",
     mime="text/csv",
 )
-
-
-# In[ ]:
-
-
-
-
