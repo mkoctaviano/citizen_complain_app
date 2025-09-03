@@ -38,11 +38,12 @@ div[data-testid="stVerticalBlockBorderWrapper"]{
   overflow:visible!important;
 }
 
-/* Reset Streamlit's own chat message content */
-[data-testid="stChatMessage"] [data-testid="stChatMessageContent"]{
-  background:transparent!important;
-  border:none!important;
-  padding:0!important;
+/* --- Remove Streamlit default chat message outline --- */
+[data-testid="stChatMessage"] [data-testid="stChatMessageContent"] {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  padding: 0 !important;
 }
 
 /* Bubble wrapper */
@@ -59,7 +60,7 @@ div[data-testid="stVerticalBlockBorderWrapper"]{
 [data-testid="stChatMessage"]:has(.bubble.assistant){
   flex-direction:row!important; justify-content:flex-start!important;
 }
-/* Assistant bubble (left, light blue with shadow) */
+/* --- Assistant bubble (flat, light blue) --- */
 .bubble.assistant {
   background: #E9F2FF;
   color: #111;
@@ -68,14 +69,17 @@ div[data-testid="stVerticalBlockBorderWrapper"]{
   margin: 2px 0;
   display: inline-block;
   max-width: 70%;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  box-shadow: none; /* no shadow */
 }
 
 /* User (right, brand blue) */
 [data-testid="stChatMessage"]:has(.bubble.user){
   flex-direction:row-reverse!important; justify-content:flex-end!important;
 }
-/* User bubble (right, brand blue with shadow) */
+/* --- User bubble (flat, brand blue) --- */
 .bubble.user {
   background: #0B2F59;
   color: #fff;
@@ -84,7 +88,10 @@ div[data-testid="stVerticalBlockBorderWrapper"]{
   margin: 2px 0;
   display: inline-block;
   max-width: 70%;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  box-shadow: none; /* no shadow */
 }
 
 /* Layout tweaks */
@@ -180,7 +187,6 @@ def user_say(msg: str):
 if not st.session_state.chat_history:
     bot_say(STEPS[0]["prompt"])
 
-from html import escape
 
 # ---------------- Render chat history ----------------
 from html import escape
