@@ -87,25 +87,13 @@ st.markdown(
         border:1px solid {BRAND}!important; padding:.65rem 1.2rem!important;
     }}
 
-    /* ✅ 헤더 박스: 왼쪽 '민심청', 오른쪽 '민원 포털' 공용 스타일 */
-    .k-pill {{
-        background:#fff;
-        border:1px solid #E5EAF2;
-        border-radius:16px;
-        box-shadow:0 8px 24px rgba(10,47,89,.06);
-        height:90px;
-        padding:0 18px;
-        display:flex; align-items:center; gap:16px;
-        overflow:hidden; white-space:nowrap;
-    }}
-    .k-pill .k-title-main {{
+    /* ✅ 심플 헤더 텍스트 전용 스타일 */
+    .k-title-main {{
         font-weight:900; font-size:2.1rem; color:{BRAND};
-        letter-spacing:-0.3px;
     }}
-    .k-pill-right {{ justify-content:center; }}
-    .k-pill-right .k-title-sub {{
-        font-weight:800; font-size:1.05rem; color:{BRAND};
-        letter-spacing:-0.2px;
+    .k-title-sub {{
+        font-weight:700; font-size:1.1rem; color:{BRAND};
+        text-align:right;
     }}
     </style>
     """,
@@ -113,62 +101,35 @@ st.markdown(
 )
 
 
-import base64
 
 # ---- header ----
 import base64
 import mimetypes
-
-# ---- header ----
 hdr = st.container()
 with hdr:
     cols = st.columns([2, 7, 3])
 
-    # -------- LEFT: 민심청 (로고 + 타이틀) --------
+    # 왼쪽: 민심청
     with cols[0]:
-        html_left = None
         if LOGO and Path(LOGO).exists():
-            try:
-                mime, _ = mimetypes.guess_type(LOGO)
-                mime = mime or "image/png"  # fallback
-                with open(LOGO, "rb") as f:
-                    b64_logo = base64.b64encode(f.read()).decode("utf-8")
-                html_left = f"""
-                <div class="k-pill" style="margin-top:8px;">
-                  <img src="data:{mime};base64,{b64_logo}"
-                       alt="logo" style="height:56px;width:auto;object-fit:contain;">
-                  <span class="k-title-main">민심청</span>
+            with open(LOGO, "rb") as f:
+                b64_logo = base64.b64encode(f.read()).decode("utf-8")
+            st.markdown(
+                f"""
+                <div style="display:flex; align-items:center; gap:10px; margin-top:8px;">
+                    <img src="data:image/png;base64,{b64_logo}" style="height:56px;width:auto;">
+                    <span class="k-title-main">민심청</span>
                 </div>
-                """
-            except Exception:
-                # 로고 읽기 실패 시 텍스트만
-                html_left = """
-                <div class="k-pill" style="margin-top:8px;">
-                  <span class="k-title-main">민심청</span>
-                </div>
-                """
+                """,
+                unsafe_allow_html=True,
+            )
         else:
-            html_left = """
-            <div class="k-pill" style="margin-top:8px;">
-              <span class="k-title-main">민심청</span>
-            </div>
-            """
-        st.markdown(html_left, unsafe_allow_html=True)
+            st.markdown('<span class="k-title-main">민심청</span>', unsafe_allow_html=True)
 
-    # -------- CENTER (필요 시 사용) --------
-    # with cols[1]:
-    #     st.markdown('<div style="height:90px;"></div>', unsafe_allow_html=True)
-
-    # -------- RIGHT: 민원 포털 --------
+    # 오른쪽: 민원 포털
     with cols[2]:
-        st.markdown(
-            """
-            <div class="k-pill k-pill-right" style="margin-top:8px;">
-              <div class="k-title-sub">민원 포털</div>
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
+        st.markdown('<div class="k-title-sub">민원 포털</div>', unsafe_allow_html=True)
+
 
 
 st.markdown(
