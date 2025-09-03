@@ -75,6 +75,13 @@ section[data-testid="stChatInput"]{
 section[data-testid="stChatInput"] textarea:focus{
   outline:none !important; box-shadow:0 0 0 2px #0B2F59 !important; border-color:#0B2F59 !important;
 }
+/* Make the user message content shrink to the bubble so the avatar can sit at the far right */
+[data-testid="stChatMessage"]:has(.bubble.user) [data-testid="stChatMessageContent"]{
+  flex: 0 0 auto !important;
+  width: auto !important;
+  display: inline-flex !important;
+}
+
 </style>
 """, unsafe_allow_html=True)
 
