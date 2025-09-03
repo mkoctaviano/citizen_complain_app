@@ -249,9 +249,9 @@ with c4:
 st.markdown("## 분류 결과")
 r1, r2, r3, r4 = st.columns([1, 1, 1, 1])
 with r1:
-    st.markdown(f'<div class="info-line">상위부서 : {row.get("상위부서", "")}</div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="info-line">부서 : {row.get("부서", "")}</div>', unsafe_allow_html=True)
 with r2:
-    st.markdown(f'<div class="info-line">하위부서 : {row.get("하위부서", "")}</div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="info-line">세부분야 : {row.get("세부분야", "")}</div>', unsafe_allow_html=True)
 with r3:
     st.markdown(f'<div class="info-line">긴급도 : {row.get("긴급도", "")}</div>', unsafe_allow_html=True)
 with r4:
