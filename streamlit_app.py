@@ -64,9 +64,19 @@ st.markdown(
     }}
     .k-hero {{ text-align:center; padding:1.6rem 0 .75rem; }}
     .k-hero h1 {{ font-size:2.1rem; font-weight:800; color:{BRAND}; margin:0; }}
+    /* ▼ updated tile to look like one solid box around everything */
     .k-tile {{
-        background:{BG_SOFT}; border:1px solid #E5EAF2; border-radius:14px; padding:1.1rem;
+        background:{BG_SOFT};
+        border:1px solid #E5EAF2;
+        border-radius:14px;
+        padding:1rem 1.1rem 1.1rem;
+        display:flex;
+        flex-direction:column;
+        gap:.6rem;
     }}
+    .k-tile-body {{ display:flex; flex-direction:column; gap:.35rem; }}
+    .k-tile-title {{ margin:0; font-size:1.15rem; font-weight:800; color:{BRAND}; }}
+    .k-tile-sub {{ margin:0; font-size:.95rem; color:#374151; }}
     .k-btn-primary button {{
         background:{BRAND}!important; color:#fff!important; border-radius:999px!important;
         border:1px solid {ACCENT}!important; padding:.65rem 1.2rem!important;
@@ -131,8 +141,15 @@ c1, c2 = st.columns(2)
 
 with c1:
     st.markdown('<div class="k-tile">', unsafe_allow_html=True)
-    st.markdown("### 민원접수")
-    st.write("• 챗봇 • 음성 녹음 • 접수 확인 안내")
+    st.markdown(
+        """
+        <div class="k-tile-body">
+          <h3 class="k-tile-title">민원접수</h3>
+          <p class="k-tile-sub">• 챗봇 • 음성 녹음 • 접수 확인 안내</p>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
     st.markdown('<div class="k-btn-primary">', unsafe_allow_html=True)
     if st.button("접수 화면으로 이동", use_container_width=True):
         st.session_state["role"] = "citizen"
@@ -141,17 +158,15 @@ with c1:
 
 with c2:
     st.markdown('<div class="k-tile">', unsafe_allow_html=True)
-    st.markdown("### 담당자")
-    st.write("• 대시보드 • 분석")
-    pw = st.text_input("접속 비밀번호", type="password", key="off_pw")
-    st.markdown('<div class="k-btn-secondary">', unsafe_allow_html=True)
-    if st.button("담당자 화면으로 이동", use_container_width=True):
-        if pw == OFFICER_PASS:
-            st.session_state["role"] = "officer"
-            _goto("pages/담당자_대시보드.py")
-        else:
-            st.error("비밀번호가 올바르지 않습니다.")
-    st.markdown('</div></div>', unsafe_allow_html=True)
+    st.markdown(
+        """
+        <div class="k-tile-body">
+          <h3 class="k-tile-title">담당자</h3>
+          <p class="k-tile-sub">• 대시보드 • 분석</p>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
 
 st.markdown('</div>', unsafe_allow_html=True)
 st.caption("민심청")
