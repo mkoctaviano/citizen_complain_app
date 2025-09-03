@@ -242,12 +242,13 @@ MODELS_BUCKET = st.secrets["GCS_BUCKET_MODELS"]
 GCP_PROJECT   = st.secrets["GCP_PROJECT"]
 GCP_SA        = st.secrets["gcp_sa"]
 KEI_LOCAL     = Path(st.secrets.get("KEI_BOOSTER_PATH", "/tmp/kei_booster.pkl"))
-MAIN_MODEL_PREFIX = "main_model/"      # folder in the models bucket
+MAIN_MODEL_PREFIX = "main_model/"
+FALLBACK_URL  = st.secrets.get("KEI_BOOSTER_URL")  # optional
 
 # -----------------------------
-# 1) Helpers: download from GCS
+# 1) GCS client (cache ok)
 # -----------------------------
-@st.cache_resource(show_spinner="Downloading models from GCS…")
+@st.cache_resource(show_spinner="Auth GCS…")
 def _gcs_client():
     creds = service_account.Credentials.from_service_account_info(GCP_SA)
     return storage.Client(credentials=creds, project=GCP_PROJECT)
@@ -259,13 +260,53 @@ def _download_blob_to(local_path: Path, bucket_name: str, blob_name: str) -> Non
     local_path.parent.mkdir(parents=True, exist_ok=True)
     blob.download_to_filename(str(local_path))
 
-@st.cache_resource(show_spinner="Fetching KEI booster…")
+# -----------------------------
+# 2) Ensure KEI booster (NO cache)
+# -----------------------------
 def ensure_kei_booster() -> str:
+    # If already present & non-empty, done.
     if KEI_LOCAL.exists() and KEI_LOCAL.stat().st_size > 0:
         return str(KEI_LOCAL)
-    _download_blob_to(KEI_LOCAL, MODELS_BUCKET, "kei_booster.pkl")
-    return str(KEI_LOCAL)
 
+    tried = []
+
+    # Try common blob names first
+    blob_candidates = [
+        "kei_booster.pkl",
+        "models/kei_booster.pkl",
+        "kei/kei_booster.pkl",
+        "main_model/kei_booster.pkl",
+    ]
+    for blob_name in blob_candidates:
+        try:
+            _download_blob_to(KEI_LOCAL, MODELS_BUCKET, blob_name)
+            if KEI_LOCAL.exists() and KEI_LOCAL.stat().st_size > 0:
+                st.write(f"✅ Downloaded KEI from gs://{MODELS_BUCKET}/{blob_name}")
+                return str(KEI_LOCAL)
+        except Exception as e:
+            tried.append(f"gs://{MODELS_BUCKET}/{blob_name}: {e}")
+
+    # Fallback: direct URL if provided
+    if FALLBACK_URL:
+        try:
+            import requests
+            r = requests.get(FALLBACK_URL, timeout=60)
+            r.raise_for_status()
+            KEI_LOCAL.parent.mkdir(parents=True, exist_ok=True)
+            KEI_LOCAL.write_bytes(r.content)
+            if KEI_LOCAL.stat().st_size > 0:
+                st.write("✅ Downloaded KEI from fallback URL")
+                return str(KEI_LOCAL)
+        except Exception as e:
+            tried.append(f"URL {FALLBACK_URL}: {e}")
+
+    # If we got here, nothing worked
+    st.error("❌ Could not fetch KEI booster. Tried:\n" + "\n".join(tried))
+    raise FileNotFoundError("KEI booster not found from GCS or URL")
+
+# -----------------------------
+# 3) Ensure main_model (cache ok)
+# -----------------------------
 @st.cache_resource(show_spinner="Fetching main_model…")
 def download_main_model_dir() -> str:
     client = _gcs_client()
@@ -280,11 +321,18 @@ def download_main_model_dir() -> str:
         blob.download_to_filename(str(local_path))
     return str(dest_dir)
 
-# -----------------------------
-# 2) Ensure artifacts BEFORE import
-# -----------------------------
+# ---- DO the work BEFORE importing model_core ----
 os.environ["KEI_BOOSTER_PATH"] = ensure_kei_booster()
-download_main_model_dir()
+os.environ["MAIN_MODEL_DIR"]   = download_main_model_dir()
+
+# -----------------------------
+# 4) Now import and patch
+# -----------------------------
+import citizen_complain_app.model_core as mc
+try:
+    mc.KEI_PKL = Path(os.environ["KEI_BOOSTER_PATH"])
+except Exception:
+    pass
 
 # -----------------------------
 # 3) Import model_core AFTER paths exist
