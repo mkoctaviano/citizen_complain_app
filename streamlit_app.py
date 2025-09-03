@@ -74,13 +74,22 @@ st.markdown(
     .k-hero {{ text-align:center; padding:1.6rem 0 .75rem; }}
     .k-hero h1 {{ font-size:2.1rem; font-weight:800; color:{BRAND}; margin:0; }}
 
-    /* Style the Streamlit bordered containers made by st.container(border=True) */
+    /* ✅ 기본 컨테이너 테두리 스타일 */
     div[data-testid="stVerticalBlockBorderWrapper"] {{
         background: {BG_SOFT};
         border: 1px solid #E5EAF2;
         border-radius: 14px;
         padding: 1rem 1.1rem 1.1rem;
         box-shadow: 0 6px 18px rgba(10,47,89,.06);
+    }}
+
+    /* ✅ 테두리 제거 클래스 */
+    .no-border div[data-testid="stVerticalBlockBorderWrapper"] {{
+        background: none !important;
+        border: none !important;
+        box-shadow: none !important;
+        padding: 0 !important;
+        border-radius: 0 !important;
     }}
 
     .k-tile-title {{ margin:0; font-size:1.15rem; font-weight:800; color:{BRAND}; }}
@@ -94,19 +103,20 @@ st.markdown(
         background:#fff!important; color:{BRAND}!important; border-radius:999px!important;
         border:1px solid {BRAND}!important; padding:.65rem 1.2rem!important;
     }}
-        /* ✅ 헤더(Row) 안의 자동 박스(테두리/그림자) 제거 */
-    .k-header-row div[data-testid="stVerticalBlockBorderWrapper"] {{
-      background: transparent !important;
-      border: none !important;
-      box-shadow: none !important;
-      padding: 0 !important;
-      border-radius: 0 !important;
-    }}
 
+    /* ✅ 헤더(Row) 안의 자동 박스 제거 */
+    .k-header-row div[data-testid="stVerticalBlockBorderWrapper"] {{
+        background: transparent !important;
+        border: none !important;
+        box-shadow: none !important;
+        padding: 0 !important;
+        border-radius: 0 !important;
+    }}
     </style>
     """,
     unsafe_allow_html=True,
 )
+
 
 import base64
 
