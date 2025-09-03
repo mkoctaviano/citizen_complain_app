@@ -26,13 +26,9 @@ hide_multipage_nav_css()
 
 st.markdown("""
 <style>
-/* Reset ALL bordered wrappers globally */
-div[data-testid="stVerticalBlockBorderWrapper"]{
-  border:none !important; box-shadow:none !important; background:transparent !important; padding:0 !important;
-}
-
 /* ---- Chat window outline (scoped) ----
-   Applies ONLY to the first bordered container right after #conv-start */
+   Applies ONLY to the bordered container right after #conv-start.
+   We do NOT reset global wrappers so your general grid outline stays. */
 #conv-start + div[data-testid="stVerticalBlock"] div[data-testid="stVerticalBlockBorderWrapper"]{
   border:2px solid #D8E3F6 !important;
   border-radius:16px !important;
@@ -42,13 +38,24 @@ div[data-testid="stVerticalBlockBorderWrapper"]{
   margin-top:8px;
 }
 
-/* Remove Streamlit’s default chat “bubble” + any row/card backgrounds */
-[data-testid="stChatMessage"]{ background:transparent !important; box-shadow:none !important; margin:6px 0 !important; gap:4px !important; align-items:flex-end; }
-[data-testid="stChatMessage"] [data-testid="stChatMessageContent"]{ background:transparent !important; border:none !important; box-shadow:none !important; padding:0 !important; }
-/* Kill the light gray rounded stripe behind the message column */
-[data-testid="stChatMessage"] > div:not([data-testid="stChatMessageAvatar"]){
+/* Remove Streamlit’s default bubble/background for the message content */
+[data-testid="stChatMessage"] [data-testid="stChatMessageContent"]{
+  background:transparent !important; border:none !important; box-shadow:none !important; padding:0 !important;
+}
+/* Remove any gray stripe/card in the message column */
+[data-testid="stChatMessage"] > div:nth-child(2){
   background:transparent !important; box-shadow:none !important; border:none !important; padding:0 !important; border-radius:0 !important;
 }
+/* Make the whole row flat (keeps avatars visible) */
+[data-testid="stChatMessage"]{
+  background:transparent !important; box-shadow:none !important;
+  margin:8px 0 !important; gap:6px !important; align-items:flex-end;
+}
+
+/* ---- Our own rows to control alignment (no :has needed) ---- */
+.bubble-row{ display:flex; width:100%; }
+.bubble-row.assistant{ justify-content:flex-start; }
+.bubble-row.user{ justify-content:flex-end; }
 
 /* ---- Text-only bubbles ---- */
 .bubble{
@@ -56,29 +63,23 @@ div[data-testid="stVerticalBlockBorderWrapper"]{
   border-radius:12px; padding:8px 12px; margin:2px 0; line-height:1.45;
   white-space:pre-wrap; overflow-wrap:anywhere; word-break:break-word;
 }
-
-/* Assistant: left aligned */
-[data-testid="stChatMessage"]:has(.bubble.assistant){ flex-direction:row !important; justify-content:flex-start !important; }
 .bubble.assistant{ background:#E9F2FF; color:#111; }
-
-/* User: right aligned, tight gap */
-[data-testid="stChatMessage"]:has(.bubble.user){ flex-direction:row-reverse !important; justify-content:flex-end !important; }
 .bubble.user{ background:#0B2F59; color:#fff; }
 
 /* Avatar size */
 [data-testid="stChatMessageAvatar"] img{ width:32px; height:32px; border-radius:50%; }
 
-/* Input docked to window */
+/* Input docked below the chat window */
 section[data-testid="stChatInput"]{
   border-top:1px solid #D8E3F6; margin-top:-10px; padding:12px;
   border-radius:0 0 16px 16px; background:#fff; max-width:100%;
 }
-/* Optional: brand focus for input */
 section[data-testid="stChatInput"] textarea:focus{
   outline:none !important; box-shadow:0 0 0 2px #0B2F59 !important; border-color:#0B2F59 !important;
 }
 </style>
 """, unsafe_allow_html=True)
+
 
 # ---------------- Session state init ----------------
 if "chat_history" not in st.session_state:
@@ -149,17 +150,22 @@ if not st.session_state.chat_history:
 # ---------------- Render chat history ----------------
 from html import escape
 
-# marker so the CSS can target just this chat window
+# Marker so CSS can scope the chat window outline
 st.markdown('<div id="conv-start"></div>', unsafe_allow_html=True)
 
-chat_box = st.container(border=True)  # outlined window
+chat_box = st.container(border=True)  # this gets the nice outline
 with chat_box:
     for m in st.session_state.chat_history:
         role = "assistant" if m["role"] == "assistant" else "user"
-        with st.chat_message(role):  # (add avatar="icons/robot-blue.svg" if you want)
+        # explicit avatars (use your own file path if you prefer)
+        avatar_symbol = "🤖" if role == "assistant" else "🙂"
+        with st.chat_message(role, avatar=avatar_symbol):
             text = escape(m["content"]).replace("\n", "<br>")
-            st.markdown(f'<div class="bubble {role}">{text}</div>', unsafe_allow_html=True)
-
+            # row controls alignment; bubble is the colored pill
+            st.markdown(
+                f'<div class="bubble-row {role}"><div class="bubble {role}">{text}</div></div>',
+                unsafe_allow_html=True,
+            )
 
 # ---------------- Voice input (content step only) ----------------
 VOICE_ON = True
