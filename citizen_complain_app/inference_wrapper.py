@@ -108,12 +108,12 @@ def run_full_inference_legacy(text: str, k_sim: int = 5) -> Dict[str, Any]:
         cause["sentence"] = mc.format_cause_sentence(cause)
 
     # Compose legacy-like structure
+        # Compose legacy-like structure
     return {
         "keywords": keywords or ["공통확인"],
         "intents": intents_dict,
         "department": dept,
         "subdepartment": subdept,
-        # keep legacy text labels; if you prefer numeric, pull from out_v2["extra"]["priority"]
         "urgency": urgency_txt,
         "emotion": emotion_txt,
         "model_version": "app_v1",
@@ -121,8 +121,12 @@ def run_full_inference_legacy(text: str, k_sim: int = 5) -> Dict[str, Any]:
             "priority": pr,
             "cause": cause,
             "similar": similar,          # alias
-            "similarity": similar,       # keep both keys if some code expects 'similarity'
+            "similarity": similar,       # keep both keys
             "reasons": reasons,
             "router": router,
+            "상위부서Top2": router.get("상위부서Top2", []),
+            "상위부서_후보TopK": router.get("상위부서_후보TopK", []),
+            "부서_후보TopK": router.get("부서_후보TopK", []),
+            "공통확인_사유": router.get("공통확인_사유", ""),
         },
     }
