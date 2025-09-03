@@ -60,7 +60,7 @@ import pickle
 BASE_DIR    = Path(__file__).resolve().parent
 
 # KEI booster (keywords/intents)
-KEI_PKL     = BASE_DIR / "kei_booster.pkl"
+KEI_PKL = Path(os.getenv("KEI_BOOSTER_PATH", "/tmp/kei_booster.pkl"))
 
 # Classifier (parent + children + optional registry)
 PARENT_DIR  = BASE_DIR / "main_model"
