@@ -202,8 +202,8 @@ def build_human_export_df(df: pd.DataFrame) -> pd.DataFrame:
     out["주소"]    = df.get("주소", "").apply(_excel_text)
     out["내용"]    = df.get("내용", "").apply(lambda s: "" if s is None else str(s))
 
-    out["부서"]      = df.get("부서", "")
-    out["세부분야"]  = df.get("세부분야", "")
+    out["상위부서"]      = df.get("상위부서", "")
+    out["하위부서"]  = df.get("하위부서", "")
     out["긴급도"]    = df.get("긴급도", "")
     out["감정"]      = df.get("감정", "")
     out["상태"]      = df.get("상태", "")
