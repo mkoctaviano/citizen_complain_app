@@ -53,6 +53,7 @@ st.markdown(
     f"""
     <style>
     .block-container {{ padding-top: 0rem !important; }}
+
     .k-header {{
         background: {BRAND}; color: #fff; padding:.75rem 1.25rem;
         border-top-left-radius:8px; border-top-right-radius:8px;
@@ -64,19 +65,19 @@ st.markdown(
     }}
     .k-hero {{ text-align:center; padding:1.6rem 0 .75rem; }}
     .k-hero h1 {{ font-size:2.1rem; font-weight:800; color:{BRAND}; margin:0; }}
-    /* ▼ updated tile to look like one solid box around everything */
-    .k-tile {{
-        background:{BG_SOFT};
-        border:1px solid #E5EAF2;
-        border-radius:14px;
-        padding:1rem 1.1rem 1.1rem;
-        display:flex;
-        flex-direction:column;
-        gap:.6rem;
+
+    /* Style the Streamlit bordered containers made by st.container(border=True) */
+    div[data-testid="stVerticalBlockBorderWrapper"] {{
+        background: {BG_SOFT};
+        border: 1px solid #E5EAF2;
+        border-radius: 14px;
+        padding: 1rem 1.1rem 1.1rem;
+        box-shadow: 0 6px 18px rgba(10,47,89,.06);
     }}
-    .k-tile-body {{ display:flex; flex-direction:column; gap:.35rem; }}
+
     .k-tile-title {{ margin:0; font-size:1.15rem; font-weight:800; color:{BRAND}; }}
-    .k-tile-sub {{ margin:0; font-size:.95rem; color:#374151; }}
+    .k-tile-sub   {{ margin:0; font-size:.95rem;  color:#374151; }}
+
     .k-btn-primary button {{
         background:{BRAND}!important; color:#fff!important; border-radius:999px!important;
         border:1px solid {ACCENT}!important; padding:.65rem 1.2rem!important;
@@ -89,6 +90,7 @@ st.markdown(
     """,
     unsafe_allow_html=True,
 )
+
 import base64
 
 # ---- header ----
@@ -140,45 +142,31 @@ st.markdown(
 c1, c2 = st.columns(2)
 
 with c1:
-    st.markdown('<div class="k-tile">', unsafe_allow_html=True)
-    st.markdown(
-        """
-        <div class="k-tile-body">
-          <h3 class="k-tile-title">민원접수</h3>
-          <p class="k-tile-sub">• 챗봇 • 음성 녹음 • 접수 확인 안내</p>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-    st.markdown('<div class="k-btn-primary">', unsafe_allow_html=True)
-    if st.button("접수 화면으로 이동", use_container_width=True):
-        st.session_state["role"] = "citizen"
-        _goto("pages/챗봇_민원_접수.py")
-    st.markdown('</div></div>', unsafe_allow_html=True)
+    with st.container(border=True):  # ← this really wraps the content
+        st.markdown('<h3 class="k-tile-title">민원접수</h3>', unsafe_allow_html=True)
+        st.markdown('<p class="k-tile-sub">• 챗봇 • 음성 녹음 • 접수 확인 안내</p>', unsafe_allow_html=True)
+
+        if st.button("접수 화면으로 이동", use_container_width=True):
+            st.session_state["role"] = "citizen"
+            _goto("pages/챗봇_민원_접수.py")
+
 
 with c2:
-    st.markdown('<div class="k-tile">', unsafe_allow_html=True)
-    st.markdown(
-        """
-        <div class="k-tile-body">
-          <h3 class="k-tile-title">담당자</h3>
-          <p class="k-tile-sub">• 대시보드 • 분석</p>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
+    with st.container(border=True):  # ← one box for title + bullets + input + button
+        st.markdown('<h3 class="k-tile-title">담당자</h3>', unsafe_allow_html=True)
+        st.markdown('<p class="k-tile-sub">• 대시보드 • 분석</p>', unsafe_allow_html=True)
 
-    # keep the password, just without "접속"
-    pw = st.text_input("비밀번호", type="password", key="off_pw")
+        pw = st.text_input("비밀번호", type="password", key="off_pw")
 
-    st.markdown('<div class="k-btn-secondary">', unsafe_allow_html=True)
-    if st.button("담당자 화면으로 이동", use_container_width=True):
-        if pw == OFFICER_PASS:
-            st.session_state["role"] = "officer"
-            _goto("pages/담당자_대시보드.py")
-        else:
-            st.error("비밀번호가 올바르지 않습니다.")
-    st.markdown('</div></div>', unsafe_allow_html=True)
+        if st.button("담당자 화면으로 이동", use_container_width=True):
+            if pw == OFFICER_PASS:
+                st.session_state["role"] = "officer"
+                _goto("pages/담당자_대시보드.py")
+            else:
+                st.error("비밀번호가 올바르지 않습니다.")
+
+st.markdown('</div>', unsafe_allow_html=True)
+
 
 
 
