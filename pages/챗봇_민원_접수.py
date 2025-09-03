@@ -26,7 +26,7 @@ hide_multipage_nav_css()
 
 st.markdown("""
 <style>
-/* ---- Chat window outline (scoped only to this chat) ---- */
+/* Chat window outline (scoped to the container after #conv-start) */
 #conv-start + div[data-testid="stVerticalBlock"] div[data-testid="stVerticalBlockBorderWrapper"]{
   border:2px solid #D8E3F6 !important;
   border-radius:16px !important;
@@ -36,7 +36,7 @@ st.markdown("""
   margin-top:8px;
 }
 
-/* Flatten Streamlit’s default row/content backgrounds */
+/* Flatten Streamlit’s row/content backgrounds */
 [data-testid="stChatMessage"]{
   background:transparent !important; box-shadow:none !important;
   margin:10px 0 !important; gap:6px !important; align-items:flex-end;
@@ -44,30 +44,37 @@ st.markdown("""
 [data-testid="stChatMessage"] [data-testid="stChatMessageContent"]{
   background:transparent !important; border:none !important; box-shadow:none !important; padding:0 !important;
 }
+
+/* 👉 KEY: make the content column shrink to the bubble, not stretch */
 [data-testid="stChatMessage"] > div:nth-child(2){
-  background:transparent !important; border:none !important; box-shadow:none !important; padding:0 !important; border-radius:0 !important;
+  background:transparent !important; border:none !important; box-shadow:none !important; padding:0 !important;
+  border-radius:0 !important;
+  flex: 0 0 auto !important;       /* shrink-to-fit */
+  width: auto !important;
 }
 
-/* ------------ KEY FIX ------------- */
-/* Make the message content shrink to the bubble size */
+/* Our alignment rows (no width stretching) */
 .bubble-row{ display:inline-flex; width:auto; align-items:flex-end; }
-/* Assistant block stays on the left */
-[data-testid="stChatMessage"]:has(.bubble-row.assistant){
-  flex-direction:row !important;            /* avatar left, bubble right of it */
-  justify-content:flex-start !important;
-}
-/* User block moves to the right, with avatar BEFORE the bubble */
-[data-testid="stChatMessage"]:has(.bubble-row.user){
-  flex-direction:row !important;            /* keep order: avatar then content */
-  justify-content:flex-end !important;      /* push both to the right edge */
-}
-/* ---------------------------------- */
+.bubble-row.assistant{ justify-content:flex-start; }
+.bubble-row.user{ justify-content:flex-end; }
 
-/* Text-only bubbles */
+/* Align rows: avatar then content; push pair to the edge */
+[data-testid="stChatMessage"]:has(.bubble-row.assistant){
+  flex-direction: row !important;            /* avatar left, bubble right */
+  justify-content: flex-start !important;
+}
+[data-testid="stChatMessage"]:has(.bubble-row.user){
+  flex-direction: row !important;            /* avatar BEFORE bubble */
+  justify-content: flex-end !important;      /* pair hugs the right edge */
+}
+
+/* Text-only bubbles (normal wrapping, no per-letter breaks) */
 .bubble{
   display:inline-block; max-width:70%;
   border-radius:12px; padding:8px 12px; margin:2px 0; line-height:1.45;
-  white-space:pre-wrap; overflow-wrap:anywhere; word-break:break-word;
+  white-space: normal;           /* was pre-wrap */
+  overflow-wrap: break-word;     /* was anywhere (caused per-letter breaks) */
+  word-break: normal;
 }
 .bubble.assistant{ background:#E9F2FF; color:#111; }
 .bubble.user{ background:#0B2F59; color:#fff; }
@@ -75,7 +82,7 @@ st.markdown("""
 /* Avatar size */
 [data-testid="stChatMessageAvatar"] img{ width:32px; height:32px; border-radius:50%; }
 
-/* Input docked below the chat window */
+/* Input docked */
 section[data-testid="stChatInput"]{
   border-top:1px solid #D8E3F6; margin-top:-10px; padding:12px;
   border-radius:0 0 16px 16px; background:#fff; max-width:100%;
