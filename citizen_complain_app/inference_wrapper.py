@@ -8,6 +8,22 @@ from pathlib import Path
 from typing import List, Optional, Dict
 from collections import Counter
 
+# -------------------------------
+# Environment & perf preferences
+# -------------------------------
+os.environ.setdefault("TOKENIZERS_PARALLELISM", "false")
+os.environ.setdefault("HF_HUB_DISABLE_PROGRESS_BARS", "1")
+os.environ.setdefault("HF_HOME", str(Path.home() / ".cache" / "hf"))
+os.environ.setdefault("TRANSFORMERS_CACHE", os.environ.get("HF_HOME", ""))
+
+# Optional: reduce CPU oversubscription on small instances
+try:
+    import torch
+    torch.set_num_threads(1)
+    torch.set_num_interop_threads(1)
+except Exception:
+    pass
+
 # --------------------------------
 # Optional Streamlit compatibility
 # --------------------------------
@@ -35,8 +51,8 @@ def _get_secret(key: str, default=None):
 
 def _gcs_client():
     """
-    Prefer st.secrets["gcp_sa"], else env var GCP_SA_JSON, else ADC.
-    Works both on Streamlit Cloud and local.
+    Prefer st.secrets['gcp_sa'], else env var GCP_SA_JSON, else ADC.
+    Works on Streamlit Cloud and local.
     """
     sa_info = None
     if HAS_ST and "gcp_sa" in st.secrets:
@@ -48,8 +64,7 @@ def _gcs_client():
     if sa_info:
         creds = service_account.Credentials.from_service_account_info(sa_info)
         return storage.Client(credentials=creds, project=project)
-    # Fallback: Application Default Credentials
-    return storage.Client(project=project)
+    return storage.Client(project=project)  # ADC
 
 
 # =============================
@@ -71,10 +86,23 @@ def _download_blob(bucket: str, blob: str, dest: Path, max_retries: int = 3):
         try:
             b.download_to_filename(str(dest))
             if _exists_nonempty(dest):
+                # write a tiny marker to avoid future re-downloads
+                (dest.parent / ".download_ok").write_text("ok", encoding="utf-8")
                 return
         except Exception:
             time.sleep(0.8 * (attempt + 1))
     raise FileNotFoundError(f"Failed to fetch gs://{bucket}/{blob} -> {dest}")
+
+
+def _prefix_has_content(root: Path, prefix: str) -> bool:
+    """
+    Quick sentinel test: consider prefix present if any config.json exists
+    or a .download_ok marker is present.
+    """
+    target_root = root / prefix.strip("/")
+    if (target_root / ".download_ok").exists():
+        return True
+    return any(target_root.rglob("config.json"))
 
 
 def _download_prefix_if_missing(bucket: str, prefix: str, root: Path) -> List[str]:
@@ -83,10 +111,8 @@ def _download_prefix_if_missing(bucket: str, prefix: str, root: Path) -> List[st
     Layout: <root>/<prefix>/<relative_files>
     """
     target_root = root / prefix.strip("/")
-    # quick sentinel: if any config.json under this prefix exists locally, skip listing/downloading
-    sentinel = list(target_root.rglob("config.json"))
-    if sentinel:
-        return []  # assume folder already present
+    if _prefix_has_content(root, prefix):
+        return []
 
     client = _gcs_client()
     bucket_obj = client.bucket(bucket)
@@ -100,6 +126,12 @@ def _download_prefix_if_missing(bucket: str, prefix: str, root: Path) -> List[st
         local.parent.mkdir(parents=True, exist_ok=True)
         bl.download_to_filename(str(local))
         files.append(str(local))
+
+    # write marker to short-circuit future listings
+    try:
+        (target_root / ".download_ok").write_text("ok", encoding="utf-8")
+    except Exception:
+        pass
     return files
 
 
@@ -109,10 +141,10 @@ def _download_prefix_if_missing(bucket: str, prefix: str, root: Path) -> List[st
 def bootstrap_models() -> Dict[str, Path]:
     """
     Resolve runtime artifacts. Preference order:
-    1) Use LOCAL dirs if already set via env (and exist).
-    2) Else use /tmp and optionally download missing parts from GCS (if bucket is configured).
+      1) Use LOCAL dirs if already set via env (and exist).
+      2) Else use /tmp and optionally download missing parts from GCS (if bucket configured).
 
-    Expects GCS layout:
+    Expected GCS layout:
       main_model/
       child_models/
       priority_model/
@@ -120,7 +152,6 @@ def bootstrap_models() -> Dict[str, Path]:
       cause_tagger/
       kei_booster.pkl   (file)
     """
-    # Allow caller to fully short-circuit by setting these envs to local paths
     base_tmp = Path("/tmp")
 
     # ----- KEI booster (single file) -----
@@ -133,16 +164,14 @@ def bootstrap_models() -> Dict[str, Path]:
     os.environ["KEI_BOOSTER_PATH"] = str(kei_dest)
 
     # ----- Model folders: only download if missing -----
-    bucket = _get_secret("GCS_BUCKET_MODELS", "")  # optional (if local already present)
+    bucket = _get_secret("GCS_BUCKET_MODELS", "")  # optional
     prefixes = ["main_model/", "child_models/", "priority_model/", "retriever_bert/", "cause_tagger/"]
     for pfx in prefixes:
         tgt = base_tmp / pfx.strip("/")
-        # If caller already mounted or set local paths with contents, we respect them via envs below.
-        # Otherwise, place (or ensure) under /tmp.
-        if not any(tgt.rglob("config.json")) and bucket:
+        if not _prefix_has_content(base_tmp, pfx) and bucket:
             _download_prefix_if_missing(bucket, pfx, base_tmp)
 
-    # ----- Tell model_core where to look (set defaults if not provided) -----
+    # ----- Default envs so model_core can find them -----
     os.environ.setdefault("MAIN_MODEL_DIR", str(base_tmp / "main_model"))
     os.environ.setdefault("CHILD_MODEL_DIR", str(base_tmp / "child_models"))
     os.environ.setdefault("CHILD_REG_PATH",  str(base_tmp / "child_models" / "child_registry.json"))
@@ -154,40 +183,67 @@ def bootstrap_models() -> Dict[str, Path]:
     return {"base_tmp": base_tmp, "kei_path": kei_dest}
 
 
-# ---- IMPORTANT: bootstrap BEFORE importing model_core ----
-_paths = bootstrap_models()
-BASE_TMP = _paths["base_tmp"]
-KEI_DEST = _paths["kei_path"]
+def _apply_path_overrides(mc, base_tmp: Path, kei_dest: Path) -> None:
+    """Force resolved paths into model_core (safe if attrs absent)."""
+    mapping = {
+        "KEI_PKL": kei_dest,
+        "BASE_DIR": base_tmp,
+        "PARENT_DIR": base_tmp / "main_model",
+        "CHILD_DIR": base_tmp / "child_models",
+        "CAUSE_DIR": base_tmp / "cause_tagger",
+        "PRIORITY_DIR": base_tmp / "priority_model",
+        "RETR_DIR": base_tmp / "retriever_bert",
+        "RETR_INDEX": base_tmp / "retriever_bert",
+    }
+    for name, value in mapping.items():
+        try:
+            setattr(mc, name, value)
+        except Exception:
+            pass
 
-# Now import model_core; it reads KEI_BOOSTER_PATH and dirs from env
-import citizen_complain_app.model_core as mc
 
-# Belt & suspenders: force the resolved paths (don’t crash if attributes missing)
-for name, value in {
-    "KEI_PKL": KEI_DEST,
-    "BASE_DIR": BASE_TMP,
-    "PARENT_DIR": BASE_TMP / "main_model",
-    "CHILD_DIR": BASE_TMP / "child_models",
-    "CAUSE_DIR": BASE_TMP / "cause_tagger",
-    "PRIORITY_DIR": BASE_TMP / "priority_model",
-    "RETR_DIR": BASE_TMP / "retriever_bert",
-    "RETR_INDEX": BASE_TMP / "retriever_bert",
-}.items():
-    try:
-        setattr(mc, name, value)
-    except Exception:
-        pass
+# =============================
+# Cached bootstrap + import
+# =============================
+def _bootstrap_and_import_uncached():
+    paths = bootstrap_models()
+    base_tmp = paths["base_tmp"]
+    kei_dest = paths["kei_path"]
+
+    import citizen_complain_app.model_core as mc  # heavy import; do it once
+    _apply_path_overrides(mc, base_tmp, kei_dest)
+    return mc
+
+
+if HAS_ST:
+    @st.cache_resource(show_spinner="Initializing models…")
+    def _bootstrap_and_import():
+        return _bootstrap_and_import_uncached()
+    mc = _bootstrap_and_import()
+else:
+    mc = _bootstrap_and_import_uncached()
+
+# Optional: one-time warmup so first user request is smoother
+try:
+    _ = mc.classify("간단한 워밍업 문장입니다.")
+except Exception:
+    pass
 
 
 # =============================
 # Public API (thin passthroughs)
 # =============================
-def run_full_inference(text: str, k_sim: int = 5):
+def run_full_inference(text: str, k_sim: int = 5, fast: bool = False):
     """
     Primary entrypoint used by Streamlit page(s).
     Calls mc.run_full_inference (which handles parent→child→priority→cause→retriever).
+    If fast=True, downstream mc can skip retriever/priority (if implemented).
     """
-    return mc.run_full_inference(text, k_sim=k_sim)
+    # If your model_core.run_full_inference doesn't accept 'fast', this will be ignored by kwargs pop.
+    try:
+        return mc.run_full_inference(text, k_sim=k_sim, fast=fast)  # newer signature
+    except TypeError:
+        return mc.run_full_inference(text, k_sim=k_sim)             # legacy signature
 
 
 def _heuristic_emotion_label(emotion_norm: Optional[float]) -> str:
@@ -232,7 +288,7 @@ def run_full_inference_legacy(text: str, k_sim: int = 5):
     Legacy formatter that keeps the older output shape
     while using mc.run_full_inference under the hood.
     """
-    out_v2 = mc.run_full_inference(text, k_sim=k_sim)
+    out_v2 = run_full_inference(text, k_sim=k_sim)
 
     keywords   = out_v2.get("keywords") or []
     router     = out_v2.get("extra", {}).get("router", {}) or {}
@@ -253,8 +309,12 @@ def run_full_inference_legacy(text: str, k_sim: int = 5):
     intents_dict = {"공통확인": 1.0} if intent_val in ("", None, "미정") else {intent_val: 1.0}
 
     cause = out_v2.get("extra", {}).get("cause", {}) or {}
-    if "sentence" not in cause and hasattr(mc, "format_cause_sentence"):
-        cause["sentence"] = mc.format_cause_sentence(cause)
+    # If your model_core has format_cause_sentence(info), add sentence text for UI
+    try:
+        if "sentence" not in cause and hasattr(mc, "format_cause_sentence"):
+            cause["sentence"] = mc.format_cause_sentence(cause)
+    except Exception:
+        pass
 
     return {
         "keywords": keywords or ["공통확인"],
