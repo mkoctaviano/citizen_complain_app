@@ -64,7 +64,7 @@ st.markdown("""
 /* PATCH — push USER text all the way to the right (avatar before bubble) */
 [data-testid="stChatMessage"]:has(.bubble.user){
   flex-direction: row !important;          /* avatar then bubble */
-  justify-content: flex-end !important;    /* push pair to the right edge */
+  justify-content: flex-start !important;    /* push pair to the right edge */
 }
 
 /* keep a small gap and ensure the content shrinks to the bubble */
