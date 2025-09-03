@@ -130,16 +130,32 @@ def validate_name(x: str):
     return (len(x) >= 1, x, "이름을 다시 입력해 주세요.")
 
 def validate_phone(x: str):
-    digits = re.sub(r"\\D", "", x)
-    if 9 <= len(digits) <= 11:
-        if len(digits) == 11:
-            formatted = f"{digits[:3]}-{digits[3:7]}-{digits[7:]}"
-        elif len(digits) == 10:
+    s = (x or "").strip()
+
+    # Normalize +82 country code → 0
+    s = re.sub(r"^\+?82-?", "0", s)
+
+    # Remove everything that isn't a digit
+    digits = re.sub(r"\D", "", s)
+
+    # --- Mobile numbers: 010 (always 11 digits)
+    if len(digits) == 11 and digits.startswith("010"):
+        formatted = f"{digits[:3]}-{digits[3:7]}-{digits[7:]}"
+        return True, formatted, ""
+
+    # --- Landlines: 10 digits
+    if len(digits) == 10:
+        if digits.startswith("02"):  # Seoul
+            formatted = f"{digits[:2]}-{digits[2:6]}-{digits[6:]}"
+        else:  # Other area codes
             formatted = f"{digits[:3]}-{digits[3:6]}-{digits[6:]}"
-        else:
-            formatted = digits
-        return (True, formatted, "")
-    return (False, None, "연락처 형식이 올바르지 않습니다. 예) 010-1234-5678")
+        return True, formatted, ""
+
+    # --- Fallback: accept 9–11 digits raw
+    if 9 <= len(digits) <= 11:
+        return True, digits, ""
+
+    return False, None, "연락처 형식이 올바르지 않습니다. 예) 010-1234-5678"
 
 def validate_address(x: str):
     x = x.strip()
