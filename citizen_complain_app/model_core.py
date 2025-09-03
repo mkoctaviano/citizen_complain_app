@@ -901,7 +901,6 @@ def run_full_inference(text: str, k_sim: int = 5) -> Dict[str, Any]:
             "공통확인_사유": cls.get("공통확인_사유", ""),
         },
     }
-    return out
 
 # ----------------------------
 # Backward-compatibility shims
