@@ -1,19 +1,32 @@
 #!/usr/bin/env python
 # coding: utf-8
 
+# ---------------- System Path Setup ----------------
 import sys
 from pathlib import Path
-sys.path.append(str(Path(__file__).resolve().parent.parent))
+sys.path.append(str(Path(__file__).resolve().parent.parent))  # Add root to sys.path
 
+# ---------------- Standard Libraries ----------------
 import os
 import re
 import time
 
+# ---------------- Streamlit & App Modules ----------------
 import streamlit as st
-import utils.env  # ensures .env is loaded
+
+# Load environment variables (.env)
+import utils.env
+
+# Voice recording and transcription
 from utils.voice import record_voice, transcribe_google
+
+# UI helpers (e.g., hiding multipage nav)
 from utils.ui import hide_multipage_nav_css
+
+# DB functions (init & 민원 등록)
 from storage import init_db, 민원_등록
+
+# Main ML inference function
 from citizen_complain_app.model_core import run_full_inference
 
 # ---------------- Page config ----------------
