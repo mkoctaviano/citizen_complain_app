@@ -36,7 +36,7 @@ st.markdown(
         box-shadow: 0 4px 14px rgba(11,47,89,0.06);
         margin-top: 8px;
 
-        height: 65vh;           /* adjust 60–75vh as you like */
+        height: 30vh;           /* adjust 60–75vh as you like */
         overflow-y: auto;       /* only inside scrolls */
     }
 
