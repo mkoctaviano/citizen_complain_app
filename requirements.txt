@@ -11,6 +11,9 @@ pydub>=0.25.1
 protobuf~=4.25.3
 streamlit-mic-recorder>=0.0.8
 pydub>=0.25.1
-torch 
+torch --index-url https://download.pytorch.org/whl/cpu
+transformers==4.41.1
+sentencepiece>=0.1.99  # (if you're using tokenizer-based models like KoELECTRA or MarianMT)
+
 
 
