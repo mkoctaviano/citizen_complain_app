@@ -181,7 +181,26 @@ def user_say(msg: str):
 # First prompt
 if not st.session_state.chat_history:
     bot_say(STEPS[0]["prompt"])
+# --- Avatar helpers (emoji fallback if image is invalid) ---
+from pathlib import Path
 
+def _is_image_source(x: str | None) -> bool:
+    if not x:
+        return False
+    p = Path(x)
+    if p.exists() and p.is_file():   # local file in container
+        return True
+    if x.startswith(("http://", "https://")):
+        # Don't hard-fail on HEAD; some CDNs block it. Trust URL shape.
+        return True
+    return False
+
+def _avatar_for(role: str):
+    url = ASSISTANT_AVATAR if role == "assistant" else USER_AVATAR
+    if _is_image_source(url):
+        return url
+    #  emoji fallback (always valid)
+    return "🤖" if role == "assistant" else "🙂"
 # ---------------- Render chat thread ----------------
 from html import escape
 st.markdown('<div id="conv-start"></div>', unsafe_allow_html=True)
