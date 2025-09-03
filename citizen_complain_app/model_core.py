@@ -15,7 +15,7 @@ import pandas as pd
 import torch
 import torch.nn.functional as F
 from dataclasses import dataclass
-import citizen_complain_app.model_core as mc
+
 
 # -------------------------------------------------------------------
 # Streamlit-safe caching (falls back to lru_cache if not in Streamlit)
@@ -58,30 +58,63 @@ import pickle
 # -------------------------------------------------------------------
 # Paths / constants
 # -------------------------------------------------------------------
-BASE_DIR    = Path(__file__).resolve().parent
+BASE_DIR = Path(__file__).resolve().parent
 
-# KEI booster (keywords/intents)
-KEI_PKL = Path(os.getenv("KEI_BOOSTER_PATH", "/tmp/kei_booster.pkl"))
-
-# Classifier (parent + children + optional registry)
-PARENT_DIR  = BASE_DIR / "main_model"
-CHILD_DIR   = BASE_DIR / "child_models"
-CHILD_REG   = BASE_DIR / "child_registry.json"
-
-# Cause tagger
-CAUSE_DIR   = BASE_DIR / "cause_tagger"
-
-# Similarity (Retriever-BERT) — model + index folder
-RETR_DIR    = BASE_DIR / "retriever_bert"         # model (config + weights)
-RETR_INDEX  = BASE_DIR / "retriever_bert"         # index: embeddings_retriever.npy + meta.jsonl
-
-# Priority models
-PRIORITY_DIR = BASE_DIR / "priority_model"
+# Allow env overrides (so worker/Streamlit can point to /tmp)
+PARENT_DIR   = Path(os.getenv("MAIN_MODEL_DIR",  str(BASE_DIR / "main_model")))
+CHILD_DIR    = Path(os.getenv("CHILD_MODEL_DIR", str(BASE_DIR / "child_models")))
+CHILD_REG    = Path(os.getenv("CHILD_REG_PATH",  str(BASE_DIR / "child_registry.json")))
+CAUSE_DIR    = Path(os.getenv("CAUSE_MODEL_DIR", str(BASE_DIR / "cause_tagger")))
+RETR_DIR     = Path(os.getenv("RETR_MODEL_DIR",  str(BASE_DIR / "retriever_bert")))
+RETR_INDEX   = Path(os.getenv("RETR_INDEX_DIR",  str(BASE_DIR / "retriever_bert")))
+PRIORITY_DIR = Path(os.getenv("PRIORITY_DIR",    str(BASE_DIR / "priority_model")))
 URGENCY_DIR  = PRIORITY_DIR / "urgency_model_roberta_reg"
 EMOTION_DIR  = PRIORITY_DIR / "KoElectra_emotion"
 
-DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
-MAX_LEN = 256
+# KEI booster file (can be overridden via env)
+KEI_PKL = Path(os.getenv("KEI_BOOSTER_PATH", "/tmp/kei_booster.pkl"))
+
+# --- self-healing: ensure KEI exists locally (works in app & worker) ---
+def _ensure_kei_available(local_path: Path) -> Path:
+    if local_path.exists() and local_path.stat().st_size > 0:
+        return local_path
+
+    # read config from streamlit secrets or env
+    try:
+        import streamlit as _st
+        sa_info = _st.secrets.get("gcp_sa", None)
+        bucket  = _st.secrets.get("GCS_BUCKET_MODELS") or os.getenv("GCS_BUCKET_MODELS")
+        project = _st.secrets.get("GCP_PROJECT")       or os.getenv("GCP_PROJECT")
+    except Exception:
+        sa_info = None
+        bucket  = os.getenv("GCS_BUCKET_MODELS")
+        project = os.getenv("GCP_PROJECT")
+
+    if not bucket:
+        raise FileNotFoundError(
+            f"KEI file missing at {local_path}, and GCS_BUCKET_MODELS is not set."
+        )
+
+    from google.cloud import storage
+    from google.oauth2 import service_account
+    creds = None
+    if sa_info:
+        creds = service_account.Credentials.from_service_account_info(dict(sa_info))
+    elif os.getenv("GCP_SA_JSON"):
+        import json
+        creds = service_account.Credentials.from_service_account_info(
+            json.loads(os.environ["GCP_SA_JSON"])
+        )
+
+    client = storage.Client(credentials=creds, project=project) if creds else storage.Client(project=project)
+    blob = client.bucket(bucket).blob("kei_booster.pkl")
+
+    local_path.parent.mkdir(parents=True, exist_ok=True)
+    blob.download_to_filename(str(local_path))
+
+    if not local_path.exists() or local_path.stat().st_size == 0:
+        raise FileNotFoundError(f"Downloaded KEI is missing/empty at {local_path}")
+    return local_path
 
 # -------------------------------------------------------------------
 # Input normalizer
@@ -117,6 +150,9 @@ def _normalize_ko(s: str) -> str:
 
 @cache_resource(show_spinner=False)
 def load_kei_booster(pkl_path: Path):
+    # Ensure the file exists; download from GCS if needed
+    pkl_path = _ensure_kei_available(pkl_path)
+
     with open(pkl_path, "rb") as f:
         blob = pickle.load(f)
     model = SentenceTransformer(blob["cfg"]["sbert_model_name"])
