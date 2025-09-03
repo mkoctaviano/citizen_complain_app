@@ -317,7 +317,15 @@ def 결과_등록(
     ts = time.strftime("%Y-%m-%d %H:%M:%S")
     kw_val  = _json_out_for_db(키워드 or [])
     in_val  = _json_out_for_db(의도 or {})
-    etc_val = _json_out_for_db(기타 or {})
+    # Safely enrich router fields into 기타
+    기타 = 기타 or {}
+    if "router" in 기타:
+        기타["상위부서Top2"] = 기타["router"].get("상위부서Top2", [])
+        기타["상위부서_후보TopK"] = 기타["router"].get("상위부서_후보TopK", [])
+        기타["부서_후보TopK"] = 기타["router"].get("부서_후보TopK", [])
+        기타["공통확인_사유"] = 기타["router"].get("공통확인_사유", "")
+    
+    etc_val = _json_out_for_db(기타)
     with get_conn() as con:
         if _is_sqlite():
             con.execute(sql("""
