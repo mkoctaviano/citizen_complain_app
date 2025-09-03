@@ -4,14 +4,16 @@
 
 from typing import Dict, Any, List, Optional
 
-# ---- 1) Ensure KEI booster file exists BEFORE importing model_core ----
+# -------------------------------------------------------------------
+# 1) Ensure KEI booster file exists BEFORE importing model_core
+# -------------------------------------------------------------------
 from pathlib import Path
 import os
 
 def _ensure_local_file(local_path: str, url: str) -> str:
     """
-    Create parent dirs and ensure the model file exists at local_path.
-    Tries plain HTTP(S) first; if it fails and GCS creds exist, tries GCS SDK.
+    Ensure the model file exists at local_path.
+    Tries plain HTTP(S) first; if that fails and GCS creds exist, tries GCS SDK.
     """
     p = Path(local_path)
     p.parent.mkdir(parents=True, exist_ok=True)
@@ -20,13 +22,13 @@ def _ensure_local_file(local_path: str, url: str) -> str:
 
     # Try unauthenticated HTTP(S)
     try:
-        import requests
+        import requests  # local import to avoid hard dependency if GCS path only
         r = requests.get(url, timeout=60)
         r.raise_for_status()
         p.write_bytes(r.content)
         return str(p)
     except Exception:
-        # Fallback: authenticated GCS download if secrets/env are present
+        # Fallback: authenticated GCS download (requires service account in secrets/env)
         try:
             from google.cloud import storage
             from google.oauth2 import service_account
@@ -34,7 +36,7 @@ def _ensure_local_file(local_path: str, url: str) -> str:
 
             # Pull SA either from Streamlit secrets or env var JSON
             try:
-                import streamlit as st
+                import streamlit as st  # optional
                 sa_info = dict(st.secrets["gcp_sa"])
                 project = st.secrets.get("GCP_PROJECT")
             except Exception:
@@ -43,6 +45,8 @@ def _ensure_local_file(local_path: str, url: str) -> str:
 
             # Parse URL like https://storage.googleapis.com/<bucket>/<blob>
             parts = url.split("/", 4)
+            if len(parts) < 5 or parts[2] != "storage.googleapis.com":
+                raise ValueError("Unsupported GCS URL format for fallback: " + url)
             bucket = parts[3]
             blob_name = parts[4]
 
@@ -51,17 +55,15 @@ def _ensure_local_file(local_path: str, url: str) -> str:
             client.bucket(bucket).blob(blob_name).download_to_filename(str(p))
             return str(p)
         except Exception as e:
-            raise RuntimeError(
-                f"Failed to fetch KEI booster from {url} -> {local_path}: {e}"
-            )
+            raise RuntimeError(f"Failed to fetch KEI booster from {url} -> {local_path}: {e}")
 
 def _get_paths():
-    """Read KEI paths from Streamlit secrets first, then env; provide sane default."""
+    """Read KEI paths from Streamlit secrets first, then env; provide sane defaults."""
     url = None
     path = None
     # Prefer Streamlit secrets if available
     try:
-        import streamlit as st
+        import streamlit as st  # optional
         url  = st.secrets.get("KEI_BOOSTER_URL", url)
         path = st.secrets.get("KEI_BOOSTER_PATH", path)
     except Exception:
@@ -69,20 +71,22 @@ def _get_paths():
     # Fallback to env
     url  = url  or os.getenv("KEI_BOOSTER_URL")
     path = path or os.getenv("KEI_BOOSTER_PATH")
-    # Default writable location if nothing set
+    # Default writable location
     path = path or "/mnt/data/kei_booster.pkl"
     if not url:
         raise RuntimeError("KEI_BOOSTER_URL not set in secrets or environment.")
     return url, path
 
-# Ensure the file now
+# Ensure the file is present before model_core import
 _KEI_URL, _KEI_PATH = _get_paths()
 _LOCAL_KEI = _ensure_local_file(_KEI_PATH, _KEI_URL)
 
-# (Optional) expose the resolved path to model_core via env if it reads from env
+# Expose to model_core if it reads from env
 os.environ.setdefault("KEI_BOOSTER_PATH", _LOCAL_KEI)
 
-# ---- 2) Now it's safe to import model_core (it can open the file) ----
+# -------------------------------------------------------------------
+# 2) Now it's safe to import model_core
+# -------------------------------------------------------------------
 from citizen_complain_app import model_core as mc
 from collections import Counter
 
@@ -110,7 +114,6 @@ def run_full_inference(text: str, k_sim: int = 5) -> Dict[str, Any]:
       }
     """
     return mc.run_full_inference(text, k_sim=k_sim)
-
 
 # -------------------------------------------------------------------
 # Legacy-compatible behavior (adds KW-vote checks, label strings, reasons)
@@ -141,11 +144,11 @@ def _kw_vote_reasons(keywords: List[str]) -> List[str]:
             if votes:
                 tot = sum(votes.values())
                 top2 = votes.most_common(2)
-                # if close contest add a reason (same heuristic you had)
+                # Close contest heuristic: add a reason
                 if len(top2) == 1 or (top2[0][1] - top2[1][1]) / max(tot, 1) < 0.15:
                     reasons.append("kw vote conflict")
     except Exception:
-        # voting is optional; fail quiet
+        # Optional; fail quiet
         pass
     return reasons
 
@@ -155,40 +158,36 @@ def run_full_inference_legacy(text: str, k_sim: int = 5) -> Dict[str, Any]:
     Adds: 'reasons', human-readable 'urgency'/'emotion' labels,
     and 'similar' list (alias of similarity).
     """
-    # Use v2 single-call
     out_v2 = mc.run_full_inference(text, k_sim=k_sim)
 
-    # Pull core parts
+    # Core parts
     keywords   = out_v2.get("keywords") or []
     router     = out_v2.get("extra", {}).get("router", {}) or {}
     dept       = router.get("상위부서") or out_v2.get("department") or "공통확인"
     subdept    = router.get("부서") or out_v2.get("subdepartment") or "공통확인"
     intent_val = router.get("의도") or out_v2.get("intents", {}).get("의도") or "미정"
 
-    # KW vote reasons (optional)
+    # Optional KW vote reasons
     reasons = _kw_vote_reasons(keywords)
 
-    # Numeric priority -> readable labels (legacy behavior)
+    # Priority → readable labels
     pr = out_v2.get("extra", {}).get("priority")
     urg_norm = pr.get("urgency_norm") if pr else None
     emo_norm = pr.get("emotion_norm") if pr else None
     urgency_txt = _urgency_label_from_norm(urg_norm)
     emotion_txt = _heuristic_emotion_label(emo_norm)
 
-    # Similar (alias) for legacy callers
+    # Similarity lists
     similar = out_v2.get("extra", {}).get("similarity", [])
 
-    # Intent mapping (legacy dict)
+    # Legacy intents dict
     intents_dict = {"공통확인": 1.0} if intent_val in ("", None, "미정") else {intent_val: 1.0}
 
-    # Cause + sentence
+    # Cause block (ensure readable sentence if helper exists)
     cause = out_v2.get("extra", {}).get("cause", {}) or {}
     if "sentence" not in cause and hasattr(mc, "format_cause_sentence"):
-        # add readable sentence for convenience
         cause["sentence"] = mc.format_cause_sentence(cause)
 
-    # Compose legacy-like structure
-        # Compose legacy-like structure
     return {
         "keywords": keywords or ["공통확인"],
         "intents": intents_dict,
@@ -200,8 +199,8 @@ def run_full_inference_legacy(text: str, k_sim: int = 5) -> Dict[str, Any]:
         "extra": {
             "priority": pr,
             "cause": cause,
-            "similar": similar,          # alias
-            "similarity": similar,       # keep both keys
+            "similar": similar,            # alias
+            "similarity": similar,         # keep both keys
             "reasons": reasons,
             "router": router,
             "상위부서Top2": router.get("상위부서Top2", []),
@@ -210,3 +209,8 @@ def run_full_inference_legacy(text: str, k_sim: int = 5) -> Dict[str, Any]:
             "공통확인_사유": router.get("공통확인_사유", ""),
         },
     }
+
+__all__ = [
+    "run_full_inference",
+    "run_full_inference_legacy",
+]
