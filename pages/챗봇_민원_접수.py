@@ -27,7 +27,7 @@ hide_multipage_nav_css()
 st.markdown(
     """
     <style>
-    /* ==== Chat window (outer outline, fixed height, internal scroll) ==== */
+    /* === Outer outline (no fixed height, no inner scroll) === */
     div[data-testid="stVerticalBlockBorderWrapper"] {
         border: 2px solid #D8E3F6 !important;
         border-radius: 16px !important;
@@ -36,54 +36,39 @@ st.markdown(
         box-shadow: 0 4px 14px rgba(11,47,89,0.06);
         margin-top: 8px;
 
-        height: 30vh;           /* adjust 60–75vh as you like */
-        overflow-y: auto;       /* only inside scrolls */
+        height: auto !important;       /* let it grow */
+        overflow: visible !important;  /* no inner scroll */
     }
 
-    /* ==== Slim bubbles ==== */
+    /* === Slim bubbles === */
     [data-testid="stChatMessage"][data-testid="assistant"] [data-testid="stChatMessageContent"] {
-        background: #E9F2FF;    /* light blue */
+        background: #E9F2FF;
         border-radius: 12px;
         padding: 8px 12px;
         border: none;
     }
     [data-testid="stChatMessage"][data-testid="user"] [data-testid="stChatMessageContent"] {
-        background: #F2F2F2;    /* light gray */
+        background: #F2F2F2;
         border-radius: 12px;
         padding: 8px 12px;
         border: none;
     }
     [data-testid="stChatMessage"] { margin: 6px 0; }
 
-    /* ==== Input bar docked to the chat window ==== */
+    /* === Input bar visually docked === */
     section[data-testid="stChatInput"] {
         border-top: 1px solid #D8E3F6;
-        margin-top: -10px;              /* pulls it up to attach */
+        margin-top: -10px;
         padding: 12px;
-        border-radius: 0 0 16px 16px;   /* match outline corners */
+        border-radius: 0 0 16px 16px;
         background: #fff;
         max-width: 100%;
-    }
-
-    /* ==== Blue scrollbar for the chat window ==== */
-    div[data-testid="stVerticalBlockBorderWrapper"]::-webkit-scrollbar { width: 8px; }
-    div[data-testid="stVerticalBlockBorderWrapper"]::-webkit-scrollbar-track {
-        background: #f1f5fb; border-radius: 10px;
-    }
-    div[data-testid="stVerticalBlockBorderWrapper"]::-webkit-scrollbar-thumb {
-        background-color: #0B2F59; border-radius: 10px;
-    }
-    div[data-testid="stVerticalBlockBorderWrapper"]::-webkit-scrollbar-thumb:hover {
-        background-color: #103D73;
-    }
-    /* Firefox */
-    div[data-testid="stVerticalBlockBorderWrapper"] {
-        scrollbar-width: thin; scrollbar-color: #0B2F59 #f1f5fb;
     }
     </style>
     """,
     unsafe_allow_html=True,
 )
+
 
 # ---------------- Session state init ----------------
 if "chat_history" not in st.session_state:
