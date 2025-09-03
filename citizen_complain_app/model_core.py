@@ -856,36 +856,44 @@ def run_full_inference(text: str, k_sim: int = 5) -> Dict[str, Any]:
             "urgency": None,
             "emotion": None,
             "model_version": "chatbot_v1",
-            "extra": {"router": {}, "cause": {"cause_span": "", "cause_score": 0.0}, "similarity": [], "priority": None},
+            "extra": {
+                "router": {},
+                "cause": {"cause_span": "", "cause_score": 0.0},
+                "similarity": [],
+                "priority": None,
+                "상위부서Top2": [],
+                "상위부서_후보TopK": [],
+                "부서_후보TopK": [],
+                "공통확인_사유": "",
+            },
         }
 
-    # Classification + cause
     cls = classify(text)
     cause = run_cause(text)
-
-    # Similarity
     sim = retriever_search(text, k=k_sim, score_floor=0.0)
-
-    # Priority (if models available)
     pr = predict_priority_single(text)
 
-    # Map numeric -> labels for UI/DB
     urgency_label = grade_priority_kr(pr["priority"]) if pr else None
     emotion_label = grade_emotion_kr(pr["emotion_norm"]) if pr else None
 
-    out: Dict[str, Any] = {
+    return {
         "keywords": cls.get("키워드Top", []),
         "intents": {"의도": cls.get("의도", "미정")},
         "department": strip_score_suffix(cls.get("상위부서", "")),
         "subdepartment": strip_score_suffix(cls.get("부서", "")),
-        "urgency": urgency_label,     # e.g., '즉시 대응'
-        "emotion": emotion_label,     # e.g., '강한 불편감'
+        "urgency": urgency_label,
+        "emotion": emotion_label,
         "model_version": "chatbot_v1",
         "extra": {
             "router": cls,
             "cause": cause,
             "similarity": sim,
-            "priority": pr,  # keep raw urgency_norm/emotion_norm/priority for analytics
+            "priority": pr,
+            # ✅ Promote these for UI + DB compatibility
+            "상위부서Top2": cls.get("상위부서Top2", []),
+            "상위부서_후보TopK": cls.get("상위부서_후보TopK", []),
+            "부서_후보TopK": cls.get("부서_후보TopK", []),
+            "공통확인_사유": cls.get("공통확인_사유", ""),
         },
     }
     return out
