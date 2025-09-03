@@ -27,42 +27,53 @@ hide_multipage_nav_css()
 st.markdown(
     """
     <style>
-    /* === Outer outline (no fixed height, no inner scroll) === */
-    div[data-testid="stVerticalBlockBorderWrapper"] {
-        border: 2px solid #D8E3F6 !important;
-        border-radius: 16px !important;
-        padding: 16px !important;
-        background: #FFFFFF !important;
-        box-shadow: 0 4px 14px rgba(11,47,89,0.06);
-        margin-top: 8px;
-
-        height: auto !important;       /* let it grow */
-        overflow: visible !important;  /* no inner scroll */
+    /* Reset Streamlit's default chat bubble look */
+    [data-testid="stChatMessage"] [data-testid="stChatMessageContent"] {
+        background: transparent !important;
+        border: none !important;
+        padding: 0 !important;
     }
 
-    /* === Slim bubbles === */
-    [data-testid="stChatMessage"][data-testid="assistant"] [data-testid="stChatMessageContent"] {
-        background: #E9F2FF;
+    /* === Assistant messages (left aligned, avatar left) === */
+    [data-testid="stChatMessage"][data-testid="assistant"] {
+        flex-direction: row !important;         /* avatar left, text right */
+        justify-content: flex-start !important;
+    }
+    [data-testid="stChatMessage"][data-testid="assistant"] [data-testid="stChatMessageContent"] p {
+        background: #E9F2FF;                    /* light blue */
         border-radius: 12px;
         padding: 8px 12px;
-        border: none;
+        margin: 0;
+        display: inline-block;
+        max-width: 70%;
+        color: #000;                            /* dark text */
     }
-    [data-testid="stChatMessage"][data-testid="user"] [data-testid="stChatMessageContent"] {
-        background: #F2F2F2;
+
+    /* === User messages (right aligned, avatar right) === */
+    [data-testid="stChatMessage"][data-testid="user"] {
+        flex-direction: row-reverse !important; /* avatar right, text left */
+        justify-content: flex-end !important;
+    }
+    [data-testid="stChatMessage"][data-testid="user"] [data-testid="stChatMessageContent"] p {
+        background: #0B2F59;                    /* brand blue */
+        color: #FFFFFF;                         /* white text */
         border-radius: 12px;
         padding: 8px 12px;
-        border: none;
+        margin: 0;
+        display: inline-block;
+        max-width: 70%;
     }
-    [data-testid="stChatMessage"] { margin: 6px 0; }
 
-    /* === Input bar visually docked === */
-    section[data-testid="stChatInput"] {
-        border-top: 1px solid #D8E3F6;
-        margin-top: -10px;
-        padding: 12px;
-        border-radius: 0 0 16px 16px;
-        background: #fff;
-        max-width: 100%;
+    /* === General spacing === */
+    [data-testid="stChatMessage"] {
+        gap: 6px !important;   /* tighten gap between avatar and bubble */
+        margin: 6px 0 !important;
+        align-items: flex-end; /* bottom align avatars with bubbles */
+    }
+
+    /* === Avatar sizing === */
+    [data-testid="stChatMessageAvatar"] img {
+        width: 32px; height: 32px; border-radius: 50%;
     }
     </style>
     """,
