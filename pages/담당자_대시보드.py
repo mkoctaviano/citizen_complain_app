@@ -73,7 +73,7 @@ st.markdown("""
 <style>
 /* "민원 검색" 라벨 크게 */
 label[data-testid="stWidgetLabel"] p {
-    font-size: 20px !important;
+    font-size: 30px !important;
     font-weight: 700 !important;
     color: #0B2F59 !important;
 }
